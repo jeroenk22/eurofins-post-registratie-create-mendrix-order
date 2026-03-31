@@ -86,7 +86,7 @@ export function entryToOrder(
     diversen,
     taakType: 2,
     adres: {
-      naam: entry.recipient,
+      naam: entry.recipient.replace(/\s*\([^)]*\)\s*$/, "").trim(),
       ...(entry.adres !== undefined && { straat: entry.adres }),
       ...(entry.postcode !== undefined && { postcode: entry.postcode }),
       ...(entry.plaats !== undefined && { plaats: entry.plaats }),

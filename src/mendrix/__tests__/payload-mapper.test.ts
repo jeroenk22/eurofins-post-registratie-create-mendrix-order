@@ -77,9 +77,24 @@ describe("entryToOrder", () => {
     expect(order.instructies).toContain("Schap: Schap 1");
   });
 
-  it("zet recipient als adres.naam", () => {
+  it("zet recipient als adres.naam zonder plaatsnaam tussen haakjes", () => {
     const order = entryToOrder(entry, sender, 3699);
-    expect(order.adres.naam).toBe("K306 - Koen Weghorst (Halle)");
+    expect(order.adres.naam).toBe("K306 - Koen Weghorst");
+  });
+
+  it("verwijdert plaatsnaam tussen haakjes aan het einde van recipient", () => {
+    const order = entryToOrder({ ...entry, recipient: "Te Bokkel Loonbedrijf (Aalten)" }, sender, 3699);
+    expect(order.adres.naam).toBe("Te Bokkel Loonbedrijf");
+  });
+
+  it("verwijdert plaatsnaam ook als naam een streepje bevat", () => {
+    const order = entryToOrder({ ...entry, recipient: "FD12 - Ruud Wieggers (Marienvelde)" }, sender, 3699);
+    expect(order.adres.naam).toBe("FD12 - Ruud Wieggers");
+  });
+
+  it("laat naam zonder haakjes ongewijzigd", () => {
+    const order = entryToOrder({ ...entry, recipient: "Gewone Naam" }, sender, 3699);
+    expect(order.adres.naam).toBe("Gewone Naam");
   });
 
   it("taakType is altijd 2 (ophalen)", () => {
