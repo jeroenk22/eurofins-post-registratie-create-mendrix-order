@@ -1,0 +1,7 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/create-order"
+  to   = "/.netlify/functions/create-order"
+  status = 200
