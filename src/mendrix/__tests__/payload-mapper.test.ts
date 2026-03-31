@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { entryPhotos, entryToOrder } from "../payload-mapper.js";
+import { entryPhotos, entryToOrder, formatColliInstructie, formatNlDatetime, nextWorkday } from "../payload-mapper.js";
 import type { EntryPayload, WebhookPayload } from "../types.js";
 
 type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
@@ -33,9 +33,9 @@ describe("entryToOrder", () => {
     expect(order.contact).toBe("Jeroen (via Postapp)");
   });
 
-  it("gebruikt entry_number als reference", () => {
+  it("laat reference leeg (Orderkenmerk niet invullen)", () => {
     const order = entryToOrder(entry, sender, 3699);
-    expect(order.reference).toBe("1");
+    expect(order.reference).toBe("");
   });
 
   it("zet referenceYour op 'Spoed' als spoed=true", () => {
@@ -48,9 +48,9 @@ describe("entryToOrder", () => {
     expect(order.referenceYour).toBe("");
   });
 
-  it("zet email en telefoon in diversen", () => {
+  it("zet aanmeldingtekst met sender naam in notes", () => {
     const order = entryToOrder(entry, sender, 3699);
-    expect(order.diversen).toBe("jeroen@test.nl | 0610451806");
+    expect(order.notes).toMatch(/^Aangemeld via postapp door Jeroen \(\d{2}-\d{2}-\d{4} om \d{2}:\d{2} uur\)$/);
   });
 
   it("maakt één goed per colli_omschrijving (standaard: Colli + opmerkingen)", () => {
@@ -67,14 +67,19 @@ describe("entryToOrder", () => {
     expect(order.goederen.every((g) => g.aantal === 1)).toBe(true);
   });
 
-  it("voegt SPOED toe aan instructies als spoed=true", () => {
+  it("instructies bevat SPOED achteraan bij spoed=true", () => {
     const order = entryToOrder(entry, sender, 3699);
-    expect(order.instructies).toContain("SPOED");
+    expect(order.instructies).toContain("afleveren SPOED");
   });
 
-  it("voegt schap toe aan instructies", () => {
+  it("instructies bevat colli omschrijvingen eindigend met afleveren SPOED", () => {
     const order = entryToOrder(entry, sender, 3699);
-    expect(order.instructies).toContain("Schap: Schap 1");
+    expect(order.instructies).toContain("Doos en emmer afleveren SPOED");
+  });
+
+  it("voegt schap niet toe aan instructies", () => {
+    const order = entryToOrder(entry, sender, 3699);
+    expect(order.instructies).not.toContain("Schap:");
   });
 
   it("zet recipient als adres.naam zonder plaatsnaam tussen haakjes", () => {
@@ -207,15 +212,123 @@ describe("spoed clientId en productId", () => {
     expect(order.productId).toBe(37);
   });
 
-  it("geen spoed: gebruikt config clientId, geen productId", () => {
+  it("geen spoed: gebruikt config clientId, productId=DUMMY (60)", () => {
     const order = entryToOrder({ ...base, spoed: false, recipient_type: "mestklant" }, sender, 3699);
     expect(order.clientId).toBe(3699);
-    expect(order.productId).toBeUndefined();
+    expect(order.productId).toBe(60);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatColliInstructie
+// ---------------------------------------------------------------------------
+
+describe("formatColliInstructie", () => {
+  it("enkelvoudige unieke omschrijvingen: kommagescheiden met en en afleveren", () => {
+    expect(formatColliInstructie(["Doos", "Emmer"])).toBe("Doos en emmer afleveren");
+  });
+
+  it("duplicaten: Nx prefix", () => {
+    expect(formatColliInstructie(["Doos", "Doos", "Doos", "Rode zak", "Doosje"])).toBe(
+      "3x doos, doosje en rode zak afleveren"
+    );
+  });
+
+  it("doos + iets: dozen meervoud bij 2 of meer", () => {
+    expect(
+      formatColliInstructie(["Doos deksels", "Doos deksels", "Grote doos sealrollen (10 doosjes)"])
+    ).toBe("2 dozen deksels en grote doos sealrollen afleveren");
+  });
+
+  it("doosje krijgt geen dozen-meervoud, wel Nx prefix", () => {
+    expect(
+      formatColliInstructie([
+        "Doosje sealrollen",
+        "Doosje sealrollen",
+        "Doosje sealrollen",
+        "Grote doos sealrollen (10 doosjes)",
+      ])
+    ).toBe("3x doosje sealrollen en grote doos sealrollen afleveren");
+  });
+
+  it("verpakking mapping: Setje insteekhoezen → insteekhoezen", () => {
+    expect(formatColliInstructie(["Setje insteekhoezen"])).toBe("Insteekhoezen afleveren");
+  });
+
+  it("verpakking mapping: Grote doos vaste mestzakken (500 stuks) → doos vaste mestzakken", () => {
+    expect(formatColliInstructie(["Grote doos vaste mestzakken (500 stuks)"])).toBe(
+      "Doos vaste mestzakken afleveren"
+    );
+  });
+
+  it("verpakking mapping: Setje vaste mestzakken (50 stuks) → setje vaste mestzakken", () => {
+    expect(formatColliInstructie(["Setje vaste mestzakken (50 stuks)"])).toBe(
+      "Setje vaste mestzakken afleveren"
+    );
+  });
+
+  it("verpakking mapping: Grote doos sealrollen (10 doosjes) → grote doos sealrollen", () => {
+    expect(formatColliInstructie(["Grote doos sealrollen (10 doosjes)"])).toBe(
+      "Grote doos sealrollen afleveren"
+    );
+  });
+
+  it("enkelvoudig: geen komma, alleen afleveren", () => {
+    expect(formatColliInstructie(["Doos"])).toBe("Doos afleveren");
+  });
+
+  it("lege lijst: lege string", () => {
+    expect(formatColliInstructie([])).toBe("");
+  });
+
+  it("sorteert alfabetisch op gemapte naam", () => {
+    expect(formatColliInstructie(["Rode zak", "Doos", "Emmer"])).toBe(
+      "Doos, emmer en rode zak afleveren"
+    );
   });
 });
 
 // ---------------------------------------------------------------------------
 // entryPhotos
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// formatNlDatetime
+// ---------------------------------------------------------------------------
+
+describe("formatNlDatetime", () => {
+  it("formatteert datum en tijd correct", () => {
+    expect(formatNlDatetime(new Date("2026-03-31T09:05:00"))).toBe("31-03-2026 om 09:05 uur");
+  });
+
+  it("voegt voorloopnullen toe bij enkelvoudige dag/maand/uur/minuut", () => {
+    expect(formatNlDatetime(new Date("2026-01-07T08:03:00"))).toBe("07-01-2026 om 08:03 uur");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// nextWorkday
+// ---------------------------------------------------------------------------
+
+describe("nextWorkday", () => {
+  it("maandag t/m donderdag → volgende dag", () => {
+    expect(nextWorkday(new Date("2026-03-30"))).toBe("2026-03-31"); // maandag→dinsdag
+    expect(nextWorkday(new Date("2026-04-02"))).toBe("2026-04-03"); // donderdag→vrijdag
+  });
+
+  it("vrijdag → maandag (weekend overslaan)", () => {
+    expect(nextWorkday(new Date("2026-04-03"))).toBe("2026-04-06");
+  });
+
+  it("zaterdag → maandag", () => {
+    expect(nextWorkday(new Date("2026-04-04"))).toBe("2026-04-06");
+  });
+
+  it("zondag → maandag", () => {
+    expect(nextWorkday(new Date("2026-04-05"))).toBe("2026-04-06");
+  });
+});
+
 // ---------------------------------------------------------------------------
 
 describe("entryPhotos", () => {

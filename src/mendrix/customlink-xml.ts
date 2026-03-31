@@ -55,10 +55,11 @@ export function buildCustomLinkXml(order: OrderData): string {
                 <Moment>${xmlEscape(ts)}</Moment>
                 <Reference>${xmlEscape(order.reference)}</Reference>
                 <ReferenceYour>${xmlEscape(order.referenceYour)}</ReferenceYour>
-                <Diversen>${xmlEscape(order.diversen)}</Diversen>
+                <Notes>${xmlEscape(order.notes)}</Notes>
                 ${order.productId !== undefined
-    ? `<ProductId Type="TEoKeyIntInfraMx"><Id>${order.productId}</Id></ProductId>`
-    : "<ProductIdAutomaticArticles>True</ProductIdAutomaticArticles>"
+    ? `<ProductId Type="TEoKeyIntInfraMx"><Id>${order.productId}</Id></ProductId>
+                <ProductIdAutomaticArticles>True</ProductIdAutomaticArticles>`
+    : ""
   }
 
                 <Goods Type="TEoGoodMxList">
@@ -87,6 +88,7 @@ export function buildCustomLinkXml(order: OrderData): string {
                             </Requested>
                             <Instructions>${xmlEscape(order.instructies)}</Instructions>
                             <TrackAndTrace>${xmlEscape(order.trackTrace)}</TrackAndTrace>
+                            <ReferenceYour>${xmlEscape(order.referenceYour)}</ReferenceYour>
                         </EoTaskMx>
                     </_TEoListBase_Items>
                 </Tasks>

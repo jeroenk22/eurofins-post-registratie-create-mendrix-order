@@ -34,7 +34,7 @@ export interface OrderData {
   contact: string;
   reference: string;
   referenceYour: string;
-  diversen: string;
+  notes: string;
   moment?: string;
   taakType: number;
   adres: Adres;
