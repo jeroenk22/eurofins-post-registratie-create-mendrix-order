@@ -54,8 +54,14 @@ async function execute(
 
     orderId = eerste.id;
   } catch (err) {
-    console.error(`[order-service] Entry ${entry.entry_number}: SOAP fout:`, (err as Error).message);
-    return { succes: false, fout: `SOAP fout: ${(err as Error).message}` };
+    const e = err as Error & { cause?: unknown; errors?: unknown[] };
+    const causeStr = e.cause
+      ? (e.cause as Error & { errors?: unknown[] }).errors
+        ? (e.cause as { errors: unknown[] }).errors.map(String).join(" | ")
+        : String(e.cause)
+      : "";
+    console.error(`[order-service] Entry ${entry.entry_number}: SOAP fout:`, e.message, causeStr ? `| cause: ${causeStr}` : "");
+    return { succes: false, fout: `SOAP fout: ${e.message}` };
   }
 
   // Stap 2: foto's uploaden naar het dossier van de nieuwe order
