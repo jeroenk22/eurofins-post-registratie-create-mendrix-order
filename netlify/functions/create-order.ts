@@ -1,11 +1,35 @@
+import { createHmac, timingSafeEqual } from "crypto";
 import type { Handler, HandlerEvent, HandlerResponse } from "@netlify/functions";
 import { loadConfig } from "../../src/mendrix/config.js";
 import { processEntry } from "../../src/mendrix/order-service.js";
 import type { WebhookPayload } from "../../src/mendrix/types.js";
 
+function verifySignature(body: string, timestamp: string, signature: string, secret: string): boolean {
+  const now = Math.floor(Date.now() / 1000);
+  const ts = parseInt(timestamp, 10);
+  if (isNaN(ts) || Math.abs(now - ts) > 300) return false;
+
+  const expected = createHmac("sha256", secret)
+    .update(`${timestamp}.${body}`)
+    .digest("hex");
+
+  try {
+    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
 export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResponse> => {
   if (event.httpMethod !== "POST") {
     return { statusCode: 405, body: "Method Not Allowed" };
+  }
+
+  const secret = process.env["WEBHOOK_SECRET"];
+  const timestamp = event.headers["x-timestamp"] ?? "";
+  const signature = event.headers["x-signature"] ?? "";
+  if (!secret || !verifySignature(event.body ?? "", timestamp, signature, secret)) {
+    return { statusCode: 401, body: "Unauthorized" };
   }
 
   let config;
