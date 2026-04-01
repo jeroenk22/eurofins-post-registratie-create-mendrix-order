@@ -1,6 +1,13 @@
 [build]
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["certs/**"]
+
+[build.environment]
+  NODE_EXTRA_CA_CERTS = "/var/task/certs/sectigo-chain.crt"
+
 [[redirects]]
   from = "/api/create-order"
   to   = "/.netlify/functions/create-order"
