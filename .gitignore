@@ -2,3 +2,4 @@ node_modules/
 .env
 .netlify/
 postman/
+.vscode/
