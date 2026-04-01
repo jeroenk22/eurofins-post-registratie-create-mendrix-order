@@ -1,15 +1,15 @@
-import type { Config, EntryPayload, FotoResultaat, OrderResultaat, WebhookPayload } from "./types.js";
+import type { Config, EntryPayload, FotoResultaat, OrderData, OrderResultaat } from "./types.js";
 import { buildCustomLinkXml } from "./customlink-xml.js";
 import { uploadPhotoDossier } from "./dossier-client.js";
-import { entryPhotos, entryToOrder } from "./payload-mapper.js";
+import { entryPhotos, entryToOrder, type SenderInfo } from "./payload-mapper.js";
 import {
   buildSoapEnvelope,
   extractCustomLinkResponse,
   parseStoreResults,
   sendSoap,
 } from "./soap-client.js";
-
-type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
+import type { SheetsLogEntry } from "./types.js";
+import { appendToSheets } from "./sheets-logger.js";
 
 // Dependency injection — maakt de service volledig testbaar zonder netwerkoproepen
 export interface OrderServiceDeps {
@@ -22,16 +22,12 @@ const defaultDeps: OrderServiceDeps = {
   doUploadPhoto: uploadPhotoDossier,
 };
 
-export async function processEntry(
+async function execute(
   entry: EntryPayload,
-  sender: SenderInfo,
+  orderData: OrderData,
   config: Config,
-  deps: OrderServiceDeps = defaultDeps
+  deps: OrderServiceDeps
 ): Promise<OrderResultaat> {
-  console.log(`[order-service] Entry ${entry.entry_number}: spoed=${entry.spoed} (${typeof entry.spoed}), recipient_type=${entry.recipient_type}, land=${entry.land}`);
-  const orderData = entryToOrder(entry, sender, config.clientId);
-  console.log(`[order-service] Entry ${entry.entry_number}: order aanmaken voor "${entry.recipient}" → clientId=${orderData.clientId}, productId=${orderData.productId}, referenceYour="${orderData.referenceYour}"`);
-
   // Stap 1: order aanmaken via SOAP Custom Link
   let orderId: string;
   try {
@@ -95,4 +91,72 @@ export async function processEntry(
     resultaat: "srInserted",
     ...(fotoResultaten.length > 0 && { fotos: fotoResultaten }),
   };
+}
+
+function buildLogEntry(
+  entry: EntryPayload,
+  orderData: OrderData,
+  sender: SenderInfo,
+  config: Config,
+  result: OrderResultaat,
+  tijdstip: Date,
+  clientIp: string
+): SheetsLogEntry {
+  const fmt = new Intl.DateTimeFormat("nl-NL", {
+    timeZone: "Europe/Amsterdam",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23",
+  });
+  const p = Object.fromEntries(fmt.formatToParts(tijdstip).map(({ type, value }) => [type, value]));
+
+  const fotosOk       = result.fotos?.filter(f =>  f.succes).length ?? 0;
+  const fotosMislukt  = result.fotos?.filter(f => !f.succes).length ?? 0;
+  const fotoFouten    = result.fotos?.filter(f => !f.succes).map(f => f.fout).join("; ") ?? "";
+
+  return {
+    datum:            `${p["year"]}-${p["month"]}-${p["day"]}`,
+    tijd:             `${p["hour"]}:${p["minute"]}:${p["second"]}`,
+    entryNr:          entry.entry_number,
+    aangemeldDoor:    sender.sender_name ?? "",
+    ontvanger:        entry.recipient,
+    recipientType:    entry.recipient_type ?? "",
+    spoed:            entry.spoed,
+    land:             entry.land ?? "NL",
+    clientId:         orderData.clientId,
+    productId:        orderData.productId,
+    orderId:          result.orderId ?? "",
+    soapResultaat:    result.resultaat ?? "",
+    soapOmschrijving: result.omschrijving ?? "",
+    fotosAangevraagd: entry.photos.length,
+    fotosOk,
+    fotosMislukt,
+    succes:           result.succes,
+    fout:             result.fout ?? fotoFouten,
+    soapEndpoint:     config.soapUrl,
+    apiEndpoint:      config.apiUrl,
+    clientIp,
+    submittedAt:      sender.submitted_at ?? "",
+  };
+}
+
+export async function processEntry(
+  entry: EntryPayload,
+  sender: SenderInfo,
+  config: Config,
+  deps: OrderServiceDeps = defaultDeps,
+  clientIp = ""
+): Promise<OrderResultaat> {
+  const tijdstip = new Date(); // verwerkingstijdstip (niet submitted_at)
+
+  console.log(`[order-service] Entry ${entry.entry_number}: spoed=${entry.spoed} (${typeof entry.spoed}), recipient_type=${entry.recipient_type}, land=${entry.land}`);
+  const orderData = entryToOrder(entry, sender);
+  console.log(`[order-service] Entry ${entry.entry_number}: order aanmaken voor "${entry.recipient}" → clientId=${orderData.clientId}, productId=${orderData.productId}, referenceYour="${orderData.referenceYour}"`);
+
+  const result = await execute(entry, orderData, config, deps);
+
+  appendToSheets(buildLogEntry(entry, orderData, sender, config, result, tijdstip, clientIp))
+    .catch(err => console.warn("[sheets] Log mislukt:", (err as Error).message));
+
+  return result;
 }

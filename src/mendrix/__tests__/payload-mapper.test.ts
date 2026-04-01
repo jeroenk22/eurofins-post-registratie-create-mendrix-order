@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { entryPhotos, entryToOrder, formatColliInstructie, formatNlDatetime, nextWorkday } from "../payload-mapper.js";
 import type { EntryPayload, WebhookPayload } from "../types.js";
 
-type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
+type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at">;
 
 const sender: SenderInfo = {
   sender_name: "Jeroen",
   sender_phone: "0610451806",
   sender_email: "jeroen@test.nl",
+  submitted_at: "2026-03-31T13:40:52.635Z",
 };
 
 const entry: EntryPayload = {
@@ -29,32 +30,32 @@ const entry: EntryPayload = {
 
 describe("entryToOrder", () => {
   it("zet sender naam met (via Postapp) in contact", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.contact).toBe("Jeroen (via Postapp)");
   });
 
   it("laat reference leeg (Orderkenmerk niet invullen)", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.reference).toBe("");
   });
 
   it("zet referenceYour op 'Spoed' als spoed=true", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.referenceYour).toBe("Spoed");
   });
 
   it("laat referenceYour leeg als spoed=false", () => {
-    const order = entryToOrder({ ...entry, spoed: false }, sender, 3699);
+    const order = entryToOrder({ ...entry, spoed: false }, sender);
     expect(order.referenceYour).toBe("");
   });
 
-  it("zet aanmeldingtekst met sender naam in notes", () => {
-    const order = entryToOrder(entry, sender, 3699);
-    expect(order.notes).toMatch(/^Aangemeld via postapp door Jeroen \(\d{2}-\d{2}-\d{4} om \d{2}:\d{2} uur\)$/);
+  it("zet aanmeldingtekst met submitted_at datum in notes", () => {
+    const order = entryToOrder(entry, sender);
+    expect(order.notes).toBe("Aangemeld via postapp door Jeroen (31-03-2026 om 15:40 uur)");
   });
 
   it("maakt één goed per colli_omschrijving (standaard: Colli + opmerkingen)", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.goederen).toHaveLength(2);
     expect(order.goederen[0]?.verpakking).toBe("Colli");
     expect(order.goederen[0]?.opmerkingen).toBe("Doos");
@@ -63,52 +64,52 @@ describe("entryToOrder", () => {
   });
 
   it("elke goed heeft aantal 1", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.goederen.every((g) => g.aantal === 1)).toBe(true);
   });
 
   it("instructies bevat SPOED achteraan bij spoed=true", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.instructies).toContain("afleveren SPOED");
   });
 
   it("instructies bevat colli omschrijvingen eindigend met afleveren SPOED", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.instructies).toContain("Doos en emmer afleveren SPOED");
   });
 
   it("voegt schap niet toe aan instructies", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.instructies).not.toContain("Schap:");
   });
 
   it("zet recipient als adres.naam zonder plaatsnaam tussen haakjes", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.adres.naam).toBe("K306 - Koen Weghorst");
   });
 
   it("verwijdert plaatsnaam tussen haakjes aan het einde van recipient", () => {
-    const order = entryToOrder({ ...entry, recipient: "Te Bokkel Loonbedrijf (Aalten)" }, sender, 3699);
+    const order = entryToOrder({ ...entry, recipient: "Te Bokkel Loonbedrijf (Aalten)" }, sender);
     expect(order.adres.naam).toBe("Te Bokkel Loonbedrijf");
   });
 
   it("verwijdert plaatsnaam ook als naam een streepje bevat", () => {
-    const order = entryToOrder({ ...entry, recipient: "FD12 - Ruud Wieggers (Marienvelde)" }, sender, 3699);
+    const order = entryToOrder({ ...entry, recipient: "FD12 - Ruud Wieggers (Marienvelde)" }, sender);
     expect(order.adres.naam).toBe("FD12 - Ruud Wieggers");
   });
 
   it("laat naam zonder haakjes ongewijzigd", () => {
-    const order = entryToOrder({ ...entry, recipient: "Gewone Naam" }, sender, 3699);
+    const order = entryToOrder({ ...entry, recipient: "Gewone Naam" }, sender);
     expect(order.adres.naam).toBe("Gewone Naam");
   });
 
   it("taakType is altijd 2 (ophalen)", () => {
-    const order = entryToOrder(entry, sender, 3699);
+    const order = entryToOrder(entry, sender);
     expect(order.taakType).toBe(2);
   });
 
   it("geen SPOED in instructies als spoed=false", () => {
-    const order = entryToOrder({ ...entry, spoed: false }, sender, 3699);
+    const order = entryToOrder({ ...entry, spoed: false }, sender);
     expect(order.instructies).not.toContain("SPOED");
   });
 
@@ -116,7 +117,6 @@ describe("entryToOrder", () => {
     const order = entryToOrder(
       { ...entry, colli: 3, colli_omschrijvingen: [] },
       sender,
-      3699
     );
     expect(order.goederen).toHaveLength(3);
   });
@@ -125,7 +125,6 @@ describe("entryToOrder", () => {
     const order = entryToOrder(
       { ...entry, colli: 0, colli_omschrijvingen: [] },
       sender,
-      3699
     );
     expect(order.goederen).toHaveLength(1);
   });
@@ -135,7 +134,6 @@ describe("entryToOrder", () => {
       const order = entryToOrder(
         { ...entry, recipient_type: "monsternemer", colli_omschrijvingen: ["Doos", "Emmer"] },
         sender,
-        3699
       );
       expect(order.goederen[0]?.verpakking).toBe("Colli");
       expect(order.goederen[0]?.opmerkingen).toBe("Doos");
@@ -147,7 +145,6 @@ describe("entryToOrder", () => {
       const order = entryToOrder(
         { ...entry, recipient_type: "ap06", colli_omschrijvingen: ["Fles"] },
         sender,
-        3699
       );
       expect(order.goederen[0]?.verpakking).toBe("Colli");
       expect(order.goederen[0]?.opmerkingen).toBe("Fles");
@@ -157,7 +154,6 @@ describe("entryToOrder", () => {
       const order = entryToOrder(
         { ...entry, recipient_type: "mestklant", colli_omschrijvingen: ["Ton"] },
         sender,
-        3699
       );
       expect(order.goederen[0]?.verpakking).toBe("Ton");
       expect(order.goederen[0]?.opmerkingen).toBeUndefined();
@@ -167,7 +163,6 @@ describe("entryToOrder", () => {
       const order = entryToOrder(
         { ...entry, colli_omschrijvingen: ["Zak"] },
         sender,
-        3699
       );
       expect(order.goederen[0]?.verpakking).toBe("Colli");
       expect(order.goederen[0]?.opmerkingen).toBe("Zak");
@@ -183,37 +178,37 @@ describe("spoed clientId en productId", () => {
   const base = { ...entry, spoed: true, photos: [] };
 
   it("mestklant (ongeacht land): clientId=3582, productId=37", () => {
-    const order = entryToOrder({ ...base, recipient_type: "mestklant", land: "Duitsland" }, sender, 3699);
+    const order = entryToOrder({ ...base, recipient_type: "mestklant", land: "Duitsland" }, sender);
     expect(order.clientId).toBe(3582);
     expect(order.productId).toBe(37);
   });
 
   it("monsternemer Nederland: clientId=3351, productId=37", () => {
-    const order = entryToOrder({ ...base, recipient_type: "monsternemer", land: "Nederland" }, sender, 3699);
+    const order = entryToOrder({ ...base, recipient_type: "monsternemer", land: "Nederland" }, sender);
     expect(order.clientId).toBe(3351);
     expect(order.productId).toBe(37);
   });
 
   it("monsternemer Duitsland: clientId=3352, productId=37", () => {
-    const order = entryToOrder({ ...base, recipient_type: "monsternemer", land: "Duitsland" }, sender, 3699);
+    const order = entryToOrder({ ...base, recipient_type: "monsternemer", land: "Duitsland" }, sender);
     expect(order.clientId).toBe(3352);
     expect(order.productId).toBe(37);
   });
 
   it("monsternemer België: clientId=3552, productId=37", () => {
-    const order = entryToOrder({ ...base, recipient_type: "monsternemer", land: "België" }, sender, 3699);
+    const order = entryToOrder({ ...base, recipient_type: "monsternemer", land: "België" }, sender);
     expect(order.clientId).toBe(3552);
     expect(order.productId).toBe(37);
   });
 
   it("ap06 (ongeacht land): clientId=3551, productId=37", () => {
-    const order = entryToOrder({ ...base, recipient_type: "ap06", land: "België" }, sender, 3699);
+    const order = entryToOrder({ ...base, recipient_type: "ap06", land: "België" }, sender);
     expect(order.clientId).toBe(3551);
     expect(order.productId).toBe(37);
   });
 
-  it("geen spoed: gebruikt config clientId, productId=DUMMY (60)", () => {
-    const order = entryToOrder({ ...base, spoed: false, recipient_type: "mestklant" }, sender, 3699);
+  it("geen spoed: clientId=DUMMY (3699), productId=DUMMY (60)", () => {
+    const order = entryToOrder({ ...base, spoed: false, recipient_type: "mestklant" }, sender);
     expect(order.clientId).toBe(3699);
     expect(order.productId).toBe(60);
   });
@@ -297,12 +292,14 @@ describe("formatColliInstructie", () => {
 // ---------------------------------------------------------------------------
 
 describe("formatNlDatetime", () => {
-  it("formatteert datum en tijd correct", () => {
-    expect(formatNlDatetime(new Date("2026-03-31T09:05:00"))).toBe("31-03-2026 om 09:05 uur");
+  it("formatteert datum en tijd correct (CEST zomertijd UTC+2)", () => {
+    // 2026-03-31 is na DST-wissel (CEST = UTC+2): 07:05Z → 09:05 Amsterdam
+    expect(formatNlDatetime(new Date("2026-03-31T07:05:00Z"))).toBe("31-03-2026 om 09:05 uur");
   });
 
-  it("voegt voorloopnullen toe bij enkelvoudige dag/maand/uur/minuut", () => {
-    expect(formatNlDatetime(new Date("2026-01-07T08:03:00"))).toBe("07-01-2026 om 08:03 uur");
+  it("voegt voorloopnullen toe bij enkelvoudige dag/maand/uur/minuut (CET wintertijd UTC+1)", () => {
+    // 2026-01-07 is wintertijd (CET = UTC+1): 07:03Z → 08:03 Amsterdam
+    expect(formatNlDatetime(new Date("2026-01-07T07:03:00Z"))).toBe("07-01-2026 om 08:03 uur");
   });
 });
 

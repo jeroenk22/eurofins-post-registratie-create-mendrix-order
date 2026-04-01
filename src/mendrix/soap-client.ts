@@ -1,4 +1,5 @@
 import type { StoreResult } from "./types.js";
+import { fetchWithTimeout } from "./http-utils.js";
 import { xmlEscape, xmlUnescape } from "./xml-utils.js";
 
 export function buildSoapEnvelope(
@@ -28,23 +29,14 @@ export function buildSoapEnvelope(
 }
 
 export async function sendSoap(envelope: string, soapUrl: string, timeoutMs = 30_000): Promise<string> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  let res: Response;
-  try {
-    res = await fetch(soapUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        SOAPAction: '"urn:UCoSoapDispatcherCustomLink-ICustomLinkSoap#ExecuteRequest"',
-      },
-      body: envelope,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  const res = await fetchWithTimeout(soapUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/xml; charset=utf-8",
+      SOAPAction: '"urn:UCoSoapDispatcherCustomLink-ICustomLinkSoap#ExecuteRequest"',
+    },
+    body: envelope,
+  }, timeoutMs);
 
   if (!res.ok) {
     const body = await res.text();

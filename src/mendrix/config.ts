@@ -7,7 +7,6 @@ export function loadConfig(): Config {
     MENDRIX_SOAP_PASS:       process.env["MENDRIX_SOAP_PASS"],
     MENDRIX_API_URL:         process.env["MENDRIX_API_URL"],
     MENDRIX_API_TOKEN:       process.env["MENDRIX_API_TOKEN"],
-    MENDRIX_CLIENT_ID:       process.env["MENDRIX_CLIENT_ID"],
   };
 
   const missing = Object.entries(vars)
@@ -24,7 +23,6 @@ export function loadConfig(): Config {
     soapPass:      vars.MENDRIX_SOAP_PASS!,
     apiUrl:        vars.MENDRIX_API_URL!,
     apiToken:      vars.MENDRIX_API_TOKEN!,
-    clientId:      parseInt(vars.MENDRIX_CLIENT_ID!, 10),
     dossierDomain: process.env["MENDRIX_DOSSIER_DOMAIN"] ?? "orders",
   };
 }

@@ -8,7 +8,6 @@ const config: Config = {
   soapPass:      "pass",
   apiUrl:        "http://api.example.com/",
   apiToken:      "token",
-  clientId:      3699,
   dossierDomain: "orders",
 };
 
