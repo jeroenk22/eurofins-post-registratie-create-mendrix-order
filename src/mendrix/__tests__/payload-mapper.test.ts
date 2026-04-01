@@ -292,12 +292,14 @@ describe("formatColliInstructie", () => {
 // ---------------------------------------------------------------------------
 
 describe("formatNlDatetime", () => {
-  it("formatteert datum en tijd correct", () => {
-    expect(formatNlDatetime(new Date("2026-03-31T09:05:00"))).toBe("31-03-2026 om 09:05 uur");
+  it("formatteert datum en tijd correct (CEST zomertijd UTC+2)", () => {
+    // 2026-03-31 is na DST-wissel (CEST = UTC+2): 07:05Z → 09:05 Amsterdam
+    expect(formatNlDatetime(new Date("2026-03-31T07:05:00Z"))).toBe("31-03-2026 om 09:05 uur");
   });
 
-  it("voegt voorloopnullen toe bij enkelvoudige dag/maand/uur/minuut", () => {
-    expect(formatNlDatetime(new Date("2026-01-07T08:03:00"))).toBe("07-01-2026 om 08:03 uur");
+  it("voegt voorloopnullen toe bij enkelvoudige dag/maand/uur/minuut (CET wintertijd UTC+1)", () => {
+    // 2026-01-07 is wintertijd (CET = UTC+1): 07:03Z → 08:03 Amsterdam
+    expect(formatNlDatetime(new Date("2026-01-07T07:03:00Z"))).toBe("07-01-2026 om 08:03 uur");
   });
 });
 

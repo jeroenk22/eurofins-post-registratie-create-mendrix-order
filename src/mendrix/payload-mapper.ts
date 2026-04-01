@@ -45,12 +45,28 @@ export function formatColliInstructie(omschrijvingen: string[]): string {
 }
 
 export function formatNlDatetime(d: Date = new Date()): string {
-  const dd   = String(d.getDate()).padStart(2, "0");
-  const mm   = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  const hh   = String(d.getHours()).padStart(2, "0");
-  const min  = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}-${mm}-${yyyy} om ${hh}:${min} uur`;
+  const fmt = new Intl.DateTimeFormat("nl-NL", {
+    timeZone: "Europe/Amsterdam",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const p = Object.fromEntries(fmt.formatToParts(d).map(({ type, value }) => [type, value]));
+  return `${p["day"]}-${p["month"]}-${p["year"]} om ${p["hour"]}:${p["minute"]} uur`;
+}
+
+function toAmsterdamIso(d: Date = new Date()): string {
+  const fmt = new Intl.DateTimeFormat("nl-NL", {
+    timeZone: "Europe/Amsterdam",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23",
+  });
+  const p = Object.fromEntries(fmt.formatToParts(d).map(({ type, value }) => [type, value]));
+  return `${p["year"]}-${p["month"]}-${p["day"]}T${p["hour"]}:${p["minute"]}:${p["second"]}`;
 }
 
 export function nextWorkday(from: Date = new Date()): string {
@@ -83,7 +99,7 @@ function landToCode(land: string): string {
   return LAND_CODES[land.toLowerCase().replace(/\s+/g, "_")] ?? "";
 }
 
-type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at">;
+export type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at">;
 
 function resolveIds(entry: EntryPayload): { clientId: number; productId?: number } {
   if (!entry.spoed) return { clientId: CLIENT.DUMMY, productId: PRODUCT.DUMMY };
@@ -157,6 +173,7 @@ export function entryToOrder(
         landcode: landToCode(entry.land),
       }),
     },
+    moment: toAmsterdamIso(),
     gewenstVan: `${nextWorkday()}T00:00:00`,
     gewenstTot: `${nextWorkday()}T23:59:59`,
     instructies: instructieParts.join(" | "),

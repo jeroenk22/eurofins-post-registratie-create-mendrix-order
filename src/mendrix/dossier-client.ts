@@ -1,5 +1,6 @@
-async function fetchAccessToken(apiUrl: string, apiToken: string): Promise<string> {
-  const base = apiUrl.replace(/\/$/, "");
+import { fetchWithTimeout } from "./http-utils.js";
+
+async function fetchAccessToken(base: string, apiToken: string): Promise<string> {
   const res = await fetch(`${base}/account/login-api-token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -26,28 +27,19 @@ export async function uploadPhotoDossier(
   buffer: Buffer,
   timeoutMs = 30_000
 ): Promise<void> {
-  const accessToken = await fetchAccessToken(apiUrl, apiToken);
-
   const base = apiUrl.replace(/\/$/, "");
+  const accessToken = await fetchAccessToken(base, apiToken);
+
   const url = `${base}/dossier/dossiers/${domain}/${orderId}/contents/${encodeURIComponent(filename)}`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/octet-stream",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: buffer,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  const res = await fetchWithTimeout(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: buffer,
+  }, timeoutMs);
 
   if (!res.ok) {
     const body = await res.text();
