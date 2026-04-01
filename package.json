@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "cross-env NODE_EXTRA_CA_CERTS=./certs/sectigo-chain.crt netlify dev",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
@@ -11,6 +12,7 @@
   "devDependencies": {
     "@netlify/functions": "^2.8.1",
     "@types/node": "^25.5.0",
+    "cross-env": "^10.1.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   }

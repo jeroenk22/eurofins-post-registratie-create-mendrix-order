@@ -1,11 +1,11 @@
 import { fetchWithTimeout } from "./http-utils.js";
 
 async function fetchAccessToken(base: string, apiToken: string): Promise<string> {
-  const res = await fetch(`${base}/account/login-api-token`, {
+  const res = await fetchWithTimeout(`${base}/account/login-api-token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token: apiToken }),
-  });
+  }, 15_000);
 
   if (!res.ok) {
     const body = await res.text();
