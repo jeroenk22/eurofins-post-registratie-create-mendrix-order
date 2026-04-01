@@ -54,8 +54,13 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
   );
   console.log(`[create-order] ${allEntries.length} entr${allEntries.length === 1 ? "y" : "ies"} ontvangen`);
 
+  const rawIp = event.headers["x-forwarded-for"]?.split(",")[0]?.trim()
+    ?? event.headers["client-ip"]
+    ?? "";
+  const clientIp = (rawIp === "::1" || rawIp === "127.0.0.1") ? "localhost" : rawIp;
+
   const resultaten = await Promise.all(
-    allEntries.map(({ entry, webhook }) => processEntry(entry, webhook, config))
+    allEntries.map(({ entry, webhook }) => processEntry(entry, webhook, config, undefined, clientIp))
   );
 
   const statusCode = resultaten.some((r) => r.succes) ? 200 : 500;

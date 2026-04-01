@@ -114,6 +114,35 @@ export interface OrderResultaat {
 }
 
 // ---------------------------------------------------------------------------
+// Logging
+// ---------------------------------------------------------------------------
+
+export interface SheetsLogEntry {
+  datum: string;            // YYYY-MM-DD (Amsterdam)
+  tijd: string;             // HH:MM:SS (Amsterdam)
+  entryNr: number;
+  aangemeldDoor: string;
+  ontvanger: string;
+  recipientType: string;
+  spoed: boolean;
+  land: string;
+  clientId: number;
+  productId: number | undefined;
+  orderId: string;
+  soapResultaat: string;
+  soapOmschrijving: string;
+  fotosAangevraagd: number;
+  fotosOk: number;
+  fotosMislukt: number;
+  succes: boolean;
+  fout: string;
+  soapEndpoint: string;
+  apiEndpoint: string;
+  clientIp: string;
+  submittedAt: string;      // ISO UTC tijdstip uit webhook
+}
+
+// ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
