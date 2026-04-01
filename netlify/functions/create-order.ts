@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "crypto";
 import type { Handler, HandlerEvent, HandlerResponse } from "@netlify/functions";
 import { loadConfig } from "../../src/mendrix/config.js";
 import { processEntry } from "../../src/mendrix/order-service.js";
-import type { WebhookPayload } from "../../src/mendrix/types.js";
+import { appendManyToSheets } from "../../src/mendrix/sheets-logger.js";
+import type { SheetsLogEntry, WebhookPayload } from "../../src/mendrix/types.js";
 
 export function verifySignature(body: string, timestamp: string, signature: string, secret: string): boolean {
   const now = Math.floor(Date.now() / 1000);
@@ -59,9 +60,14 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
     ?? "";
   const clientIp = (rawIp === "::1" || rawIp === "127.0.0.1") ? "localhost" : rawIp;
 
+  const logEntries: SheetsLogEntry[] = [];
   const resultaten = await Promise.all(
-    allEntries.map(({ entry, webhook }) => processEntry(entry, webhook, config, undefined, clientIp))
+    allEntries.map(({ entry, webhook }) =>
+      processEntry(entry, webhook, config, undefined, clientIp, (le) => logEntries.push(le))
+    )
   );
+
+  appendManyToSheets(logEntries).catch(err => console.warn("[sheets] Log mislukt:", (err as Error).message));
 
   const statusCode = resultaten.some((r) => r.succes) ? 200 : 500;
   return {

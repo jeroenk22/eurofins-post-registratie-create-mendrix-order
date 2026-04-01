@@ -145,7 +145,8 @@ export async function processEntry(
   sender: SenderInfo,
   config: Config,
   deps: OrderServiceDeps = defaultDeps,
-  clientIp = ""
+  clientIp = "",
+  onLog?: (logEntry: SheetsLogEntry) => void
 ): Promise<OrderResultaat> {
   const tijdstip = new Date(); // verwerkingstijdstip (niet submitted_at)
 
@@ -154,9 +155,13 @@ export async function processEntry(
   console.log(`[order-service] Entry ${entry.entry_number}: order aanmaken voor "${entry.recipient}" → clientId=${orderData.clientId}, productId=${orderData.productId}, referenceYour="${orderData.referenceYour}"`);
 
   const result = await execute(entry, orderData, config, deps);
+  const logEntry = buildLogEntry(entry, orderData, sender, config, result, tijdstip, clientIp);
 
-  appendToSheets(buildLogEntry(entry, orderData, sender, config, result, tijdstip, clientIp))
-    .catch(err => console.warn("[sheets] Log mislukt:", (err as Error).message));
+  if (onLog) {
+    onLog(logEntry);
+  } else {
+    appendToSheets(logEntry).catch(err => console.warn("[sheets] Log mislukt:", (err as Error).message));
+  }
 
   return result;
 }
