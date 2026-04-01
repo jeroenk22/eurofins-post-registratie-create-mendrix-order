@@ -51,7 +51,7 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
 
   // Elke webhook bevat meerdere entries — elke entry wordt een aparte order
   const allEntries = webhooks.flatMap((webhook) =>
-    webhook.entries.map((entry) => ({ entry, webhook }))
+    (webhook.entries ?? []).map((entry) => ({ entry, webhook }))
   );
   console.log(`[create-order] ${allEntries.length} entr${allEntries.length === 1 ? "y" : "ies"} ontvangen`);
 
