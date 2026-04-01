@@ -85,8 +85,8 @@ function landToCode(land: string): string {
 
 type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
 
-function resolveIds(entry: EntryPayload, defaultClientId: number): { clientId: number; productId?: number } {
-  if (!entry.spoed) return { clientId: defaultClientId, productId: PRODUCT.DUMMY };
+function resolveIds(entry: EntryPayload): { clientId: number; productId?: number } {
+  if (!entry.spoed) return { clientId: CLIENT.DUMMY, productId: PRODUCT.DUMMY };
 
   const landCode = entry.land ? landToCode(entry.land) : "NL";
   switch (entry.recipient_type) {
@@ -106,7 +106,6 @@ function resolveIds(entry: EntryPayload, defaultClientId: number): { clientId: n
 export function entryToOrder(
   entry: EntryPayload,
   sender: SenderInfo,
-  clientId: number
 ): OrderData {
   // Elk omschrijving = één goed met aantal 1
   // mestklant: verpakking=omschrijving, geen opmerkingen
@@ -137,7 +136,7 @@ export function entryToOrder(
   const contact = sender.sender_name ? `${sender.sender_name} (via Postapp)` : "via Postapp";
   const door = sender.sender_name ? ` door ${sender.sender_name}` : "";
   const notes = `Aangemeld via postapp${door} (${formatNlDatetime()})`;
-  const ids = resolveIds(entry, clientId);
+  const ids = resolveIds(entry);
 
   return {
     clientId: ids.clientId,

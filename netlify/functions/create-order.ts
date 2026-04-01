@@ -4,7 +4,7 @@ import { loadConfig } from "../../src/mendrix/config.js";
 import { processEntry } from "../../src/mendrix/order-service.js";
 import type { WebhookPayload } from "../../src/mendrix/types.js";
 
-function verifySignature(body: string, timestamp: string, signature: string, secret: string): boolean {
+export function verifySignature(body: string, timestamp: string, signature: string, secret: string): boolean {
   const now = Math.floor(Date.now() / 1000);
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts) || Math.abs(now - ts) > 300) return false;

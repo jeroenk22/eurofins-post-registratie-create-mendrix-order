@@ -123,6 +123,5 @@ export interface Config {
   soapPass: string;
   apiUrl: string;
   apiToken: string;
-  clientId: number;
   dossierDomain: string;
 }

@@ -29,7 +29,7 @@ export async function processEntry(
   deps: OrderServiceDeps = defaultDeps
 ): Promise<OrderResultaat> {
   console.log(`[order-service] Entry ${entry.entry_number}: spoed=${entry.spoed} (${typeof entry.spoed}), recipient_type=${entry.recipient_type}, land=${entry.land}`);
-  const orderData = entryToOrder(entry, sender, config.clientId);
+  const orderData = entryToOrder(entry, sender);
   console.log(`[order-service] Entry ${entry.entry_number}: order aanmaken voor "${entry.recipient}" → clientId=${orderData.clientId}, productId=${orderData.productId}, referenceYour="${orderData.referenceYour}"`);
 
   // Stap 1: order aanmaken via SOAP Custom Link
