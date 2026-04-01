@@ -67,7 +67,7 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
     )
   );
 
-  appendManyToSheets(logEntries).catch(err => console.warn("[sheets] Log mislukt:", (err as Error).message));
+  await appendManyToSheets(logEntries).catch(err => console.warn("[sheets] Log mislukt:", (err as Error).message));
 
   const statusCode = resultaten.some((r) => r.succes) ? 200 : 500;
   return {
