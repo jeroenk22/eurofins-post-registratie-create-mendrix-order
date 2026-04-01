@@ -1,6 +1,67 @@
 import type { EntryPayload, Goed, OrderData, WebhookPayload } from "./types.js";
 import { CLIENT, PRODUCT } from "./ids.js";
 
+// ---------------------------------------------------------------------------
+// Verpakking mapping (mestklant colli-omschrijvingen → instructie-tekst)
+// ---------------------------------------------------------------------------
+
+const VERPAKKING_MAPPING: Record<string, string> = {
+  "grote doos sealrollen (10 doosjes)": "grote doos sealrollen",
+  "grote doos vaste mestzakken (500 stuks)": "doos vaste mestzakken",
+  "setje insteekhoezen": "insteekhoezen",
+  "setje vaste mestzakken (50 stuks)": "setje vaste mestzakken",
+};
+
+function mapVerpakking(omschrijving: string): string {
+  const key = omschrijving.toLowerCase().trim();
+  return VERPAKKING_MAPPING[key] ?? key;
+}
+
+export function formatColliInstructie(omschrijvingen: string[]): string {
+  if (omschrijvingen.length === 0) return "";
+
+  // Tel duplicaten op basis van gemapte naam
+  const counts = new Map<string, number>();
+  for (const o of omschrijvingen) {
+    const mapped = mapVerpakking(o);
+    counts.set(mapped, (counts.get(mapped) ?? 0) + 1);
+  }
+
+  // Sorteer alfabetisch op gemapte naam, formatteer daarna
+  const parts = Array.from(counts.entries())
+    .sort(([a], [b]) => a.localeCompare(b, "nl"))
+    .map(([name, count]) => {
+      if (count > 1 && /^doos\s+\S/.test(name)) {
+        return `${count} dozen ${name.slice(5).trim()}`;
+      }
+      if (count > 1) return `${count}x ${name}`;
+      return name;
+    });
+
+  const sentence = parts.length === 1
+    ? `${parts[0]} afleveren`
+    : `${parts.slice(0, -1).join(", ")} en ${parts[parts.length - 1]} afleveren`;
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+}
+
+export function formatNlDatetime(d: Date = new Date()): string {
+  const dd   = String(d.getDate()).padStart(2, "0");
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh   = String(d.getHours()).padStart(2, "0");
+  const min  = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}-${mm}-${yyyy} om ${hh}:${min} uur`;
+}
+
+export function nextWorkday(from: Date = new Date()): string {
+  const d = new Date(from);
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() === 0 || d.getDay() === 6) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d.toISOString().slice(0, 10);
+}
+
 const LAND_CODES: Record<string, string> = {
   nederland: "NL",
   duitsland: "DE",
@@ -25,7 +86,7 @@ function landToCode(land: string): string {
 type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
 
 function resolveIds(entry: EntryPayload, defaultClientId: number): { clientId: number; productId?: number } {
-  if (!entry.spoed) return { clientId: defaultClientId };
+  if (!entry.spoed) return { clientId: defaultClientId, productId: PRODUCT.DUMMY };
 
   const landCode = entry.land ? landToCode(entry.land) : "NL";
   switch (entry.recipient_type) {
@@ -70,20 +131,21 @@ export function entryToOrder(
   }
 
   const instructieParts: string[] = [];
-  if (entry.spoed) instructieParts.push("SPOED");
-  if (entry.shelf) instructieParts.push(`Schap: ${entry.shelf}`);
+  const colliInstructie = formatColliInstructie(entry.colli_omschrijvingen);
+  if (colliInstructie) instructieParts.push(entry.spoed ? `${colliInstructie} SPOED` : colliInstructie);
 
   const contact = sender.sender_name ? `${sender.sender_name} (via Postapp)` : "via Postapp";
-  const diversen = [sender.sender_email, sender.sender_phone].filter(Boolean).join(" | ");
+  const door = sender.sender_name ? ` door ${sender.sender_name}` : "";
+  const notes = `Aangemeld via postapp${door} (${formatNlDatetime()})`;
   const ids = resolveIds(entry, clientId);
 
   return {
     clientId: ids.clientId,
     ...(ids.productId !== undefined && { productId: ids.productId }),
     contact,
-    reference: String(entry.entry_number),
+    reference: "",
     referenceYour: entry.spoed ? "Spoed" : "",
-    diversen,
+    notes,
     taakType: 2,
     adres: {
       naam: entry.recipient.replace(/\s*\([^)]*\)\s*$/, "").trim(),
@@ -95,8 +157,8 @@ export function entryToOrder(
         landcode: landToCode(entry.land),
       }),
     },
-    gewenstVan: "",
-    gewenstTot: "",
+    gewenstVan: `${nextWorkday()}T00:00:00`,
+    gewenstTot: `${nextWorkday()}T23:59:59`,
     instructies: instructieParts.join(" | "),
     trackTrace: "",
     goederen,

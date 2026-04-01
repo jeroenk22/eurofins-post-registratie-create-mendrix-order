@@ -69,6 +69,27 @@ describe("buildCustomLinkXml", () => {
     expect(xml).toMatch(/<Moment>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}<\/Moment>/);
   });
 
+  it("zet ReferenceYour ook in EoTaskMx", () => {
+    const order: OrderData = { ...baseOrder, referenceYour: "Spoed" };
+    const xml = buildCustomLinkXml(order);
+    // Moet twee keer voorkomen: één op orderniveau, één op taakniveau
+    const matches = xml.match(/<ReferenceYour>Spoed<\/ReferenceYour>/g);
+    expect(matches).toHaveLength(2);
+  });
+
+  it("bevat geen ProductId als productId ontbreekt", () => {
+    const xml = buildCustomLinkXml(baseOrder);
+    expect(xml).not.toContain("ProductId");
+    expect(xml).not.toContain("ProductIdAutomaticArticles");
+  });
+
+  it("zet ProductId en ProductIdAutomaticArticles als productId aanwezig is", () => {
+    const order: OrderData = { ...baseOrder, productId: 37 };
+    const xml = buildCustomLinkXml(order);
+    expect(xml).toContain("<Id>37</Id>");
+    expect(xml).toContain("<ProductIdAutomaticArticles>True</ProductIdAutomaticArticles>");
+  });
+
   it("laat Packing weg als verpakking leeg is", () => {
     const order: OrderData = {
       ...baseOrder,
