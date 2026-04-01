@@ -37,15 +37,8 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
   return ((await res.json()) as { access_token: string }).access_token;
 }
 
-export async function appendToSheets(entry: SheetsLogEntry): Promise<void> {
-  const saJson  = process.env["GOOGLE_SERVICE_ACCOUNT"];
-  const sheetId = process.env["GOOGLE_SPREADSHEET_ID"];
-  if (!saJson || !sheetId) return;  // Logging optioneel — stil overslaan als env vars ontbreken
-
-  const tab   = process.env["NETLIFY_DEV"] === "true" ? "DEVELOPMENT" : "PRODUCTION";
-  const token = await getAccessToken(JSON.parse(saJson) as ServiceAccount);
-
-  const row = [
+function toRow(entry: SheetsLogEntry): unknown[] {
+  return [
     entry.datum,
     entry.tijd,
     entry.entryNr,
@@ -69,6 +62,15 @@ export async function appendToSheets(entry: SheetsLogEntry): Promise<void> {
     entry.clientIp,
     entry.submittedAt,
   ];
+}
+
+async function appendRows(rows: unknown[][]): Promise<void> {
+  const saJson  = process.env["GOOGLE_SERVICE_ACCOUNT"];
+  const sheetId = process.env["GOOGLE_SPREADSHEET_ID"];
+  if (!saJson || !sheetId) return;  // Logging optioneel — stil overslaan als env vars ontbreken
+
+  const tab   = process.env["NETLIFY_DEV"] === "true" ? "DEVELOPMENT" : "PRODUCTION";
+  const token = await getAccessToken(JSON.parse(saJson) as ServiceAccount);
 
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
   const res = await fetch(url, {
@@ -77,10 +79,19 @@ export async function appendToSheets(entry: SheetsLogEntry): Promise<void> {
       Authorization:  `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ values: [row] }),
+    body: JSON.stringify({ values: rows }),
   });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Sheets API HTTP ${res.status}: ${body.slice(0, 200)}`);
   }
+}
+
+export async function appendToSheets(entry: SheetsLogEntry): Promise<void> {
+  await appendRows([toRow(entry)]);
+}
+
+export async function appendManyToSheets(entries: SheetsLogEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  await appendRows(entries.map(toRow));
 }
