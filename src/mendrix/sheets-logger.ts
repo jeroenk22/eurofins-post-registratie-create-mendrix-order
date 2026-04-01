@@ -1,4 +1,5 @@
 import { createSign } from "crypto";
+import { fetchWithTimeout } from "./http-utils.js";
 import type { SheetsLogEntry } from "./types.js";
 
 interface ServiceAccount {
@@ -22,14 +23,14 @@ function createJwt(sa: ServiceAccount): string {
 }
 
 async function getAccessToken(sa: ServiceAccount): Promise<string> {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion:  createJwt(sa),
     }),
-  });
+  }, 15_000);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Google token HTTP ${res.status}: ${body.slice(0, 200)}`);
@@ -69,18 +70,26 @@ async function appendRows(rows: unknown[][]): Promise<void> {
   const sheetId = process.env["GOOGLE_SPREADSHEET_ID"];
   if (!saJson || !sheetId) return;  // Logging optioneel — stil overslaan als env vars ontbreken
 
-  const tab   = process.env["NETLIFY_DEV"] === "true" ? "DEVELOPMENT" : "PRODUCTION";
-  const token = await getAccessToken(JSON.parse(saJson) as ServiceAccount);
+  const tab = process.env["NETLIFY_DEV"] === "true" ? "DEVELOPMENT" : "PRODUCTION";
+
+  let sa: ServiceAccount;
+  try {
+    sa = JSON.parse(saJson) as ServiceAccount;
+  } catch {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT bevat geen geldige JSON");
+  }
+
+  const token = await getAccessToken(sa);
 
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}!A1:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: "POST",
     headers: {
       Authorization:  `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ values: rows }),
-  });
+  }, 30_000);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Sheets API HTTP ${res.status}: ${body.slice(0, 200)}`);
