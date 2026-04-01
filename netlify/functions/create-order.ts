@@ -28,7 +28,8 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
   const secret = process.env["WEBHOOK_SECRET"];
   const timestamp = event.headers["x-timestamp"] ?? "";
   const signature = event.headers["x-signature"] ?? "";
-  if (!secret || !verifySignature(event.body ?? "", timestamp, signature, secret)) {
+  const body = event.body ?? "";
+  if (!secret || !verifySignature(body, timestamp, signature, secret)) {
     return { statusCode: 401, body: "Unauthorized" };
   }
 

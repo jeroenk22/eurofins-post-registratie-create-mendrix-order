@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { entryPhotos, entryToOrder, formatColliInstructie, formatNlDatetime, nextWorkday } from "../payload-mapper.js";
 import type { EntryPayload, WebhookPayload } from "../types.js";
 
-type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
+type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at">;
 
 const sender: SenderInfo = {
   sender_name: "Jeroen",
   sender_phone: "0610451806",
   sender_email: "jeroen@test.nl",
+  submitted_at: "2026-03-31T13:40:52.635Z",
 };
 
 const entry: EntryPayload = {
@@ -48,9 +49,9 @@ describe("entryToOrder", () => {
     expect(order.referenceYour).toBe("");
   });
 
-  it("zet aanmeldingtekst met sender naam in notes", () => {
+  it("zet aanmeldingtekst met submitted_at datum in notes", () => {
     const order = entryToOrder(entry, sender);
-    expect(order.notes).toMatch(/^Aangemeld via postapp door Jeroen \(\d{2}-\d{2}-\d{4} om \d{2}:\d{2} uur\)$/);
+    expect(order.notes).toBe("Aangemeld via postapp door Jeroen (31-03-2026 om 15:40 uur)");
   });
 
   it("maakt één goed per colli_omschrijving (standaard: Colli + opmerkingen)", () => {

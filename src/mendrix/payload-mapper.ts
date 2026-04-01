@@ -83,7 +83,7 @@ function landToCode(land: string): string {
   return LAND_CODES[land.toLowerCase().replace(/\s+/g, "_")] ?? "";
 }
 
-type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email">;
+type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at">;
 
 function resolveIds(entry: EntryPayload): { clientId: number; productId?: number } {
   if (!entry.spoed) return { clientId: CLIENT.DUMMY, productId: PRODUCT.DUMMY };
@@ -135,7 +135,8 @@ export function entryToOrder(
 
   const contact = sender.sender_name ? `${sender.sender_name} (via Postapp)` : "via Postapp";
   const door = sender.sender_name ? ` door ${sender.sender_name}` : "";
-  const notes = `Aangemeld via postapp${door} (${formatNlDatetime()})`;
+  const moment = sender.submitted_at ? new Date(sender.submitted_at) : new Date();
+  const notes = `Aangemeld via postapp${door} (${formatNlDatetime(moment)})`;
   const ids = resolveIds(entry);
 
   return {
