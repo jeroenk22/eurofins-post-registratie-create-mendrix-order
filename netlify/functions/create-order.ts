@@ -53,6 +53,9 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
   const allEntries = webhooks.flatMap((webhook) =>
     (webhook.entries ?? []).map((entry) => ({ entry, webhook }))
   );
+  for (const webhook of webhooks) {
+    console.log(`[create-order] app_version=${webhook.app_version ?? "(onbekend)"}, ingediend door=${webhook.sender_name}, entries=${webhook.entries?.length ?? 0}`);
+  }
   console.log(`[create-order] ${allEntries.length} entr${allEntries.length === 1 ? "y" : "ies"} ontvangen`);
 
   const rawIp = event.headers["x-forwarded-for"]?.split(",")[0]?.trim()

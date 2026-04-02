@@ -99,7 +99,7 @@ function landToCode(land: string): string {
   return LAND_CODES[land.toLowerCase().replace(/\s+/g, "_")] ?? "";
 }
 
-export type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at">;
+export type SenderInfo = Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "submitted_at" | "app_version">;
 
 function resolveIds(entry: EntryPayload): { clientId: number; productId?: number } {
   if (!entry.spoed) return { clientId: CLIENT.DUMMY, productId: PRODUCT.DUMMY };
