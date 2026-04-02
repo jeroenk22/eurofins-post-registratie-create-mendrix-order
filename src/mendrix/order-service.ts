@@ -143,6 +143,7 @@ function buildLogEntry(
     apiEndpoint:      config.apiUrl,
     clientIp,
     submittedAt:      sender.submitted_at ?? "",
+    appVersion:       sender.app_version ?? "",
   };
 }
 

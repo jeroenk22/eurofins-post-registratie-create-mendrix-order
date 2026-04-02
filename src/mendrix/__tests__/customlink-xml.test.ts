@@ -7,7 +7,7 @@ const baseOrder: OrderData = {
   contact: "Jan Jansen",
   reference: "REF-001",
   referenceYour: "",
-  diversen: "",
+  notes: "",
   moment: "2026-04-10T08:00:00",
   taakType: 2,
   adres: {

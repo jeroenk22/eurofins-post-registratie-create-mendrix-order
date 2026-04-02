@@ -77,6 +77,7 @@ export interface EntryPayload {
 export interface WebhookPayload {
   submitted_at?: string;
   datetime_nl?: string;
+  app_version?: string;
   sender_name: string;
   sender_phone?: string;
   sender_email?: string;
@@ -140,6 +141,7 @@ export interface SheetsLogEntry {
   apiEndpoint: string;
   clientIp: string;
   submittedAt: string;      // ISO UTC tijdstip uit webhook
+  appVersion: string;       // app_version uit webhook (leeg als ontbreekt)
 }
 
 // ---------------------------------------------------------------------------

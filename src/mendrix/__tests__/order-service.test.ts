@@ -11,10 +11,11 @@ const config: Config = {
   dossierDomain: "orders",
 };
 
-const sender: Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email"> = {
+const sender: Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "app_version"> = {
   sender_name:  "Jeroen",
   sender_phone: "0610451806",
   sender_email: "jeroen@test.nl",
+  app_version:  "2026.49.164",
 };
 
 const entry: EntryPayload = {
@@ -140,5 +141,34 @@ describe("processEntry", () => {
 
     expect(result.fotos).toBeUndefined();
     expect(deps.doUploadPhoto).not.toHaveBeenCalled();
+  });
+
+  it("neemt app_version op in de log entry", async () => {
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+
+    let logEntry: import("../types.js").SheetsLogEntry | undefined;
+    await processEntry(entry, sender, config, deps, "", (le) => { logEntry = le; });
+
+    expect(logEntry?.appVersion).toBe("2026.49.164");
+  });
+
+  it("zet appVersion op lege string als app_version ontbreekt in de webhook", async () => {
+    const senderZonderVersion: Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email"> = {
+      sender_name:  "Jeroen",
+      sender_phone: "0610451806",
+      sender_email: "jeroen@test.nl",
+    };
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+
+    let logEntry: import("../types.js").SheetsLogEntry | undefined;
+    await processEntry(entry, senderZonderVersion, config, deps, "", (le) => { logEntry = le; });
+
+    expect(logEntry?.appVersion).toBe("");
   });
 });
