@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_EXTRA_CA_CERTS=./certs/sectigo-chain.crt netlify dev",
+    "build": "node scripts/generate-version.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

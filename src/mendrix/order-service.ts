@@ -1,5 +1,5 @@
-import { execSync } from "child_process";
 import type { Config, EntryPayload, FotoResultaat, OrderData, OrderResultaat } from "./types.js";
+import { GENERATED_API_VERSION } from "./version.generated.js";
 import { buildCustomLinkXml } from "./customlink-xml.js";
 import { uploadPhotoDossier } from "./dossier-client.js";
 import { entryPhotos, entryToOrder, type SenderInfo } from "./payload-mapper.js";
@@ -101,39 +101,7 @@ async function execute(
 }
 
 function getApiVersion(): string {
-  const env = process.env.API_VERSION?.trim();
-  if (env) return env;
-
-  const year = new Date().getFullYear();
-  const pr = getPrNumber() ?? "0";
-  const commits = getCommitCount() ?? "0";
-  if (pr === "0" && commits === "0") return "";
-  return `${year}.${pr}.${commits}`;
-}
-
-function getPrNumber(): string | undefined {
-  const ghRef = process.env.GITHUB_REF ?? "";
-  const fromRef = ghRef.match(/^refs\/pull\/(\d+)\/merge$/)?.[1]
-    ?? ghRef.match(/^refs\/pull\/(\d+)\/head$/)?.[1];
-  if (fromRef) return fromRef;
-
-  const githubPr = process.env.GITHUB_PR_NUMBER ?? process.env.PR_NUMBER;
-  if (githubPr) return githubPr.toString();
-
-  return undefined;
-}
-
-function getCommitCount(): string | undefined {
-  try {
-    const output = execSync("git rev-list --count HEAD", {
-      cwd: process.cwd(),
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    return output || undefined;
-  } catch {
-    return undefined;
-  }
+  return process.env.API_VERSION?.trim() || GENERATED_API_VERSION;
 }
 
 function buildLogEntry(
