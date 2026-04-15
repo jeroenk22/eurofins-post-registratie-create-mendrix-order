@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+vi.mock("../version.generated.js", () => ({ GENERATED_API_VERSION: "2026.16.159" }));
 import { processEntry } from "../order-service.js";
 import type { Config, EntryPayload, WebhookPayload } from "../types.js";
 
@@ -149,28 +150,26 @@ describe("processEntry", () => {
       doUploadPhoto: vi.fn(),
     };
 
-    process.env.API_VERSION = "2026.16.159";
+    process.env.API_VERSION = "2026.99.999";
     let logEntry: import("../types.js").SheetsLogEntry | undefined;
     await processEntry(entry, sender, config, deps, "", (le) => { logEntry = le; });
 
     expect(logEntry?.appVersion).toBe("2026.49.164");
-    expect(logEntry?.apiVersion).toBe("2026.16.159");
+    expect(logEntry?.apiVersion).toBe("2026.99.999");
     delete process.env.API_VERSION;
   });
 
-  it("berekent apiVersion zelf uit projectomgeving wanneer API_VERSION ontbreekt", async () => {
+  it("gebruikt gegenereerde apiVersion als API_VERSION env var ontbreekt", async () => {
     const deps = {
       doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
       doUploadPhoto: vi.fn(),
     };
 
     delete process.env.API_VERSION;
-    process.env.GITHUB_REF = "refs/pull/16/merge";
     let logEntry: import("../types.js").SheetsLogEntry | undefined;
     await processEntry(entry, sender, config, deps, "", (le) => { logEntry = le; });
 
-    expect(logEntry?.apiVersion).toMatch(/^2026\.16\.\d+$/);
-    delete process.env.GITHUB_REF;
+    expect(logEntry?.apiVersion).toBe("2026.16.159");
   });
 
   it("zet appVersion op lege string als app_version ontbreekt in de webhook", async () => {
@@ -188,6 +187,6 @@ describe("processEntry", () => {
     await processEntry(entry, senderZonderVersion, config, deps, "", (le) => { logEntry = le; });
 
     expect(logEntry?.appVersion).toBe("");
-    expect(logEntry?.apiVersion).toMatch(/^(?:\d+\.\d+\.\d+|)$/);
+    expect(logEntry?.apiVersion).toBe("2026.16.159");
   });
 });
