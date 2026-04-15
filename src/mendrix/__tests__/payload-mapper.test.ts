@@ -51,6 +51,17 @@ describe("entryToOrder", () => {
 
   it("zet aanmeldingtekst met submitted_at datum in notes", () => {
     const order = entryToOrder(entry, sender);
+    expect(order.notes).toBe("Aangemeld via postapp door Jeroen (31-03-2026 om 15:40 uur) - Schap 1");
+  });
+
+  it("voegt geen shelf toe aan notes als shelf leeg is", () => {
+    const order = entryToOrder({ ...entry, shelf: "" }, sender);
+    expect(order.notes).toBe("Aangemeld via postapp door Jeroen (31-03-2026 om 15:40 uur)");
+  });
+
+  it("voegt geen shelf toe aan notes als shelf ontbreekt", () => {
+    const { shelf: _, ...entryZonderShelf } = entry;
+    const order = entryToOrder(entryZonderShelf as typeof entry, sender);
     expect(order.notes).toBe("Aangemeld via postapp door Jeroen (31-03-2026 om 15:40 uur)");
   });
 

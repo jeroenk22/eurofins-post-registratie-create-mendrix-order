@@ -160,7 +160,8 @@ export function entryToOrder(
   const contact = sender.sender_name ? `${sender.sender_name} (via Postapp)` : "via Postapp";
   const door = sender.sender_name ? ` door ${sender.sender_name}` : "";
   const moment = sender.submitted_at ? new Date(sender.submitted_at) : new Date();
-  const notes = `Aangemeld via postapp${door} (${formatNlDatetime(moment)})`;
+  const shelf = entry.shelf ? ` - ${entry.shelf}` : "";
+  const notes = `Aangemeld via postapp${door} (${formatNlDatetime(moment)})${shelf}`;
   const ids = resolveIds(entry);
 
   return {
