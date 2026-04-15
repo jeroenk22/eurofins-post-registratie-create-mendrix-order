@@ -55,6 +55,7 @@ const ENTRY: SheetsLogEntry = {
   clientIp: "127.0.0.1",
   submittedAt: "2026-04-01T10:00:00Z",
   appVersion: "2026.49.164",
+  apiVersion: "1.0.0",
 };
 
 describe("appendManyToSheets", () => {
@@ -196,7 +197,7 @@ describe("appendManyToSheets", () => {
     await expect(appendManyToSheets([ENTRY])).rejects.toThrow("GOOGLE_SERVICE_ACCOUNT bevat geen geldige JSON");
   });
 
-  it("bevat app_version als laatste kolom in de rij", async () => {
+  it("bevat api_version als laatste kolom in de rij", async () => {
     vi.stubEnv("GOOGLE_SERVICE_ACCOUNT", TEST_SA);
     vi.stubEnv("GOOGLE_SPREADSHEET_ID", "sheet123");
     const mockFetch = vi.fn()
@@ -209,7 +210,23 @@ describe("appendManyToSheets", () => {
     const [, opts] = mockFetch.mock.calls[1] as [string, RequestInit];
     const body = JSON.parse(opts.body as string) as { values: unknown[][] };
     const row = body.values[0]!;
-    expect(row[row.length - 1]).toBe("2026.49.164");
+    expect(row[row.length - 1]).toBe("1.0.0");
+  });
+
+  it("bevat app_version als een-na-laatste kolom in de rij", async () => {
+    vi.stubEnv("GOOGLE_SERVICE_ACCOUNT", TEST_SA);
+    vi.stubEnv("GOOGLE_SPREADSHEET_ID", "sheet123");
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(TOKEN_OK)
+      .mockResolvedValueOnce(SHEETS_OK);
+    vi.stubGlobal("fetch", mockFetch);
+
+    await appendManyToSheets([ENTRY]);
+
+    const [, opts] = mockFetch.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string) as { values: unknown[][] };
+    const row = body.values[0]!;
+    expect(row[row.length - 2]).toBe("2026.49.164");
   });
 
   it("schrijft lege string als app_version ontbreekt (backwards compat)", async () => {
@@ -226,6 +243,25 @@ describe("appendManyToSheets", () => {
     const [, opts] = mockFetch.mock.calls[1] as [string, RequestInit];
     const body = JSON.parse(opts.body as string) as { values: unknown[][] };
     const row = body.values[0]!;
+    expect(row[row.length - 2]).toBe("");
+    expect(row[row.length - 1]).toBe("1.0.0");
+  });
+
+  it("schrijft lege string als api_version ontbreekt (backwards compat)", async () => {
+    vi.stubEnv("GOOGLE_SERVICE_ACCOUNT", TEST_SA);
+    vi.stubEnv("GOOGLE_SPREADSHEET_ID", "sheet123");
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(TOKEN_OK)
+      .mockResolvedValueOnce(SHEETS_OK);
+    vi.stubGlobal("fetch", mockFetch);
+
+    const entryZonderApiVersion: SheetsLogEntry = { ...ENTRY, apiVersion: "" };
+    await appendManyToSheets([entryZonderApiVersion]);
+
+    const [, opts] = mockFetch.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string) as { values: unknown[][] };
+    const row = body.values[0]!;
+    expect(row[row.length - 2]).toBe("2026.49.164");
     expect(row[row.length - 1]).toBe("");
   });
 });

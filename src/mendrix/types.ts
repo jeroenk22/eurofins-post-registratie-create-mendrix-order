@@ -68,8 +68,8 @@ export interface EntryPayload {
   plaats?: string;
   land?: string;
   colli: number;
-  colli_omschrijvingen: string[];
-  spoed: boolean;
+  colli_omschrijvingen?: string[];
+  spoed?: boolean;
   photo_count?: number;
   photos: PhotoPayload[];
 }
@@ -142,6 +142,7 @@ export interface SheetsLogEntry {
   clientIp: string;
   submittedAt: string;      // ISO UTC tijdstip uit webhook
   appVersion: string;       // app_version uit webhook (leeg als ontbreekt)
+  apiVersion: string;       // intern berekende API-versie, niet vanuit webhook
 }
 
 // ---------------------------------------------------------------------------
