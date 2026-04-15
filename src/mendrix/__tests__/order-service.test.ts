@@ -14,7 +14,7 @@ const config: Config = {
 const sender: Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email" | "app_version"> = {
   sender_name:  "Jeroen",
   sender_phone: "0610451806",
-  sender_email: "jeroen@test.nl",
+  sender_email: "j@tron.nl",
   app_version:  "2026.49.164",
 };
 
@@ -149,17 +149,35 @@ describe("processEntry", () => {
       doUploadPhoto: vi.fn(),
     };
 
+    process.env.API_VERSION = "2026.16.159";
     let logEntry: import("../types.js").SheetsLogEntry | undefined;
     await processEntry(entry, sender, config, deps, "", (le) => { logEntry = le; });
 
     expect(logEntry?.appVersion).toBe("2026.49.164");
+    expect(logEntry?.apiVersion).toBe("2026.16.159");
+    delete process.env.API_VERSION;
+  });
+
+  it("berekent apiVersion zelf uit projectomgeving wanneer API_VERSION ontbreekt", async () => {
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+
+    delete process.env.API_VERSION;
+    process.env.GITHUB_REF = "refs/pull/16/merge";
+    let logEntry: import("../types.js").SheetsLogEntry | undefined;
+    await processEntry(entry, sender, config, deps, "", (le) => { logEntry = le; });
+
+    expect(logEntry?.apiVersion).toMatch(/^2026\.16\.\d+$/);
+    delete process.env.GITHUB_REF;
   });
 
   it("zet appVersion op lege string als app_version ontbreekt in de webhook", async () => {
     const senderZonderVersion: Pick<WebhookPayload, "sender_name" | "sender_phone" | "sender_email"> = {
       sender_name:  "Jeroen",
       sender_phone: "0610451806",
-      sender_email: "jeroen@test.nl",
+      sender_email: "j@tron.nl",
     };
     const deps = {
       doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
@@ -170,5 +188,6 @@ describe("processEntry", () => {
     await processEntry(entry, senderZonderVersion, config, deps, "", (le) => { logEntry = le; });
 
     expect(logEntry?.appVersion).toBe("");
+    expect(logEntry?.apiVersion).toMatch(/^(?:\d+\.\d+\.\d+|)$/);
   });
 });

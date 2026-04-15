@@ -121,6 +121,28 @@ describe("entryToOrder", () => {
     expect(order.goederen).toHaveLength(3);
   });
 
+  it("defensieve fallback voor null colli_omschrijvingen", () => {
+    const order = entryToOrder(
+      { ...entry, colli: 2, colli_omschrijvingen: null as unknown as string[] },
+      sender,
+    );
+    expect(order.goederen).toHaveLength(2);
+    expect(order.goederen[0]?.verpakking).toBeUndefined();
+    expect(order.goederen[0]?.opmerkingen).toBeUndefined();
+  });
+
+  it("defensieve fallback voor undefined colli_omschrijvingen", () => {
+    const entryZonderDescr = {
+      ...entry,
+      colli: 1,
+      colli_omschrijvingen: undefined as unknown as string[],
+    };
+    const order = entryToOrder(entryZonderDescr, sender);
+    expect(order.goederen).toHaveLength(1);
+    expect(order.goederen[0]?.verpakking).toBeUndefined();
+    expect(order.goederen[0]?.opmerkingen).toBeUndefined();
+  });
+
   it("minimaal één goed als colli=0 en omschrijvingen leeg", () => {
     const order = entryToOrder(
       { ...entry, colli: 0, colli_omschrijvingen: [] },
@@ -150,9 +172,27 @@ describe("entryToOrder", () => {
       expect(order.goederen[0]?.opmerkingen).toBe("Fles");
     });
 
-    it("mestklant: verpakking=omschrijving, geen opmerkingen", () => {
+    it("mestklant zonder spoed: verpakking=omschrijving, geen opmerkingen", () => {
       const order = entryToOrder(
-        { ...entry, recipient_type: "mestklant", colli_omschrijvingen: ["Ton"] },
+        { ...entry, recipient_type: "mestklant", spoed: false, colli_omschrijvingen: ["Ton"] },
+        sender,
+      );
+      expect(order.goederen[0]?.verpakking).toBe("Ton");
+      expect(order.goederen[0]?.opmerkingen).toBeUndefined();
+    });
+
+    it("mestklant met spoed: verpakking=Colli, opmerkingen=omschrijving", () => {
+      const order = entryToOrder(
+        { ...entry, recipient_type: "mestklant", spoed: true, colli_omschrijvingen: ["Ton"] },
+        sender,
+      );
+      expect(order.goederen[0]?.verpakking).toBe("Colli");
+      expect(order.goederen[0]?.opmerkingen).toBe("Ton");
+    });
+
+    it("mestklant zonder spoed veld: valt terug op zonder spoed", () => {
+      const order = entryToOrder(
+        { ...entry, recipient_type: "mestklant", spoed: undefined, colli_omschrijvingen: ["Ton"] } as unknown as typeof entry,
         sender,
       );
       expect(order.goederen[0]?.verpakking).toBe("Ton");

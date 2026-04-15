@@ -63,6 +63,7 @@ function toRow(entry: SheetsLogEntry): unknown[] {
     entry.clientIp,
     entry.submittedAt,
     entry.appVersion,
+    entry.apiVersion,
   ];
 }
 

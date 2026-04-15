@@ -17,8 +17,9 @@ function mapVerpakking(omschrijving: string): string {
   return VERPAKKING_MAPPING[key] ?? key;
 }
 
-export function formatColliInstructie(omschrijvingen: string[]): string {
-  if (omschrijvingen.length === 0) return "";
+export function formatColliInstructie(omschrijvingen: string[] = []): string {
+  const list = Array.isArray(omschrijvingen) ? omschrijvingen : [];
+  if (list.length === 0) return "";
 
   // Tel duplicaten op basis van gemapte naam
   const counts = new Map<string, number>();
@@ -124,14 +125,21 @@ export function entryToOrder(
   sender: SenderInfo,
 ): OrderData {
   // Elk omschrijving = één goed met aantal 1
-  // mestklant: verpakking=omschrijving, geen opmerkingen
-  // alle andere types (monsternemer, ap06, leeg/null): verpakking="Colli", opmerkingen=omschrijving
+  // mestklant met spoed: verpakking=Colli, opmerkingen=omschrijving
+  // mestklant zonder spoed: verpakking=omschrijving, geen opmerkingen
+  // alle andere types: verpakking=Colli, opmerkingen=omschrijving
+  const descriptions = Array.isArray(entry.colli_omschrijvingen) ? entry.colli_omschrijvingen : [];
   const isMestklant = entry.recipient_type === "mestklant";
-  const goederen: Goed[] = entry.colli_omschrijvingen.map((omschrijving) =>
-    isMestklant
-      ? { verpakking: omschrijving, aantal: 1 }
-      : { verpakking: "Colli", opmerkingen: omschrijving, aantal: 1 }
-  );
+  const isMestklantSpoed = isMestklant && entry.spoed === true;
+  const goederen: Goed[] = descriptions.map((omschrijving) => {
+    if (isMestklantSpoed) {
+      return { verpakking: "Colli", opmerkingen: omschrijving, aantal: 1 };
+    }
+    if (isMestklant) {
+      return { verpakking: omschrijving, aantal: 1 };
+    }
+    return { verpakking: "Colli", opmerkingen: omschrijving, aantal: 1 };
+  });
 
   // Fallback als colli_omschrijvingen leeg is maar colli > 0
   if (goederen.length === 0 && entry.colli > 0) {
@@ -146,7 +154,7 @@ export function entryToOrder(
   }
 
   const instructieParts: string[] = [];
-  const colliInstructie = formatColliInstructie(entry.colli_omschrijvingen);
+  const colliInstructie = formatColliInstructie(descriptions);
   if (colliInstructie) instructieParts.push(entry.spoed ? `${colliInstructie} SPOED` : colliInstructie);
 
   const contact = sender.sender_name ? `${sender.sender_name} (via Postapp)` : "via Postapp";
