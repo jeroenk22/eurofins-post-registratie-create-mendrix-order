@@ -132,7 +132,7 @@ function buildLogEntry(
     aangemeldDoor:    sender.sender_name ?? "",
     ontvanger:        entry.recipient,
     recipientType:    entry.recipient_type ?? "",
-    spoed:            entry.spoed,
+    spoed:            entry.spoed ?? false,
     land:             entry.land ?? "NL",
     clientId:         orderData.clientId,
     productId:        orderData.productId,
