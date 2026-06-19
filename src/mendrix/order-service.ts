@@ -67,7 +67,7 @@ async function execute(
 
   // Stap 2: foto's uploaden naar het dossier van de nieuwe order
   const fotos = entryPhotos(entry);
-  console.log(`[order-service] Entry ${entry.entry_number}: orderId=${orderId}, ${fotos.length} foto(s) uploaden`);
+  console.log(`[order-service] Entry ${entry.entry_number}: orderId=${orderId}, ${fotos.length} foto(s) uploaden via ${config.apiUrl}`);
   const fotoResultaten: FotoResultaat[] = await Promise.all(
     fotos.map(async (foto, i): Promise<FotoResultaat> => {
       const base64Data = foto.replace(/^data:[^;]+;base64,/, "");
