@@ -56,6 +56,14 @@ certs/                → TLS-certificaatketen (Sectigo)
 netlify.toml          → Netlify build + redirect configuratie
 ```
 
+## Referentiedocumentatie
+
+- [docs/mendrix-poorten.md](docs/mendrix-poorten.md) — Overzicht van alle Mendrix TMS netwerkpoorten en beveiligingsniveaus. Bij vragen over poorten, protocol (HTTP/HTTPS), of beveiliging van een verbinding: **altijd eerst dit bestand raadplegen** voordat je antwoord geeft of een aanbeveling doet.
+- [docs/soap/Mendrix_soap_customlink_docs.md](docs/soap/Mendrix_soap_customlink_docs.md) — Volledige Mendrix Custom Link SOAP API documentatie. Bij vragen over SOAP-berichten, XML-structuur, veldnamen of het aanmaken/opvragen van orders via Custom Link: **altijd eerst dit bestand raadplegen**.
+- [docs/rest/Making-authorized-requests.md](docs/rest/Making-authorized-requests.md) — Uitleg over authenticatie (JWT Bearer token) voor de Mendrix REST API. Bij vragen over het login-endpoint, access tokens of autorisatie: raadpleeg dit bestand.
+- [docs/rest/MendriX-API-2025.3.66.7056-openapi.json](docs/rest/MendriX-API-2025.3.66.7056-openapi.json) — OpenAPI (Swagger) specificatie van de volledige Mendrix REST API. Bij vragen over REST endpoints, request/response structuren of de dossier-upload API: raadpleeg dit bestand.
+- [docs/examples/](docs/examples/) — XML voorbeeldbestanden (requests en responses) waarnaar de SOAP-documentatie verwijst. Bevat o.a. `EoCustomLinkStoreOrdersNormal*.xml` voor het aanmaken van orders en `EoCustomLinkSoapRequest*.xml` voor SOAP envelope voorbeelden.
+
 ## Kritieke regels
 - `version.generated.ts` wordt gegenereerd door `pretest`/`build` — nooit handmatig aanpassen
 - SOAP-calls gebruiken de Custom Link XML-structuur — raadpleeg bestaande XML-utils en tests bij wijzigingen
