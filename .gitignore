@@ -4,4 +4,5 @@ node_modules/
 postman/
 .vscode/
 src/mendrix/version.generated.ts
-docs/
+docs/*
+!docs/nginx-beheer.md
