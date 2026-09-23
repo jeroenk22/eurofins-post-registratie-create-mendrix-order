@@ -264,6 +264,24 @@ describe("appendManyToSheets", () => {
     expect(row[row.length - 2]).toBe("2026.49.164");
     expect(row[row.length - 1]).toBe("");
   });
+
+  it("schrijft clientId en productId als lege cel als ze ontbreken (mapping fout)", async () => {
+    vi.stubEnv("GOOGLE_SERVICE_ACCOUNT", TEST_SA);
+    vi.stubEnv("GOOGLE_SPREADSHEET_ID", "sheet123");
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(TOKEN_OK)
+      .mockResolvedValueOnce(SHEETS_OK);
+    vi.stubGlobal("fetch", mockFetch);
+
+    const entryZonderIds: SheetsLogEntry = { ...ENTRY, clientId: undefined, productId: undefined };
+    await appendManyToSheets([entryZonderIds]);
+
+    const [, opts] = mockFetch.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string) as { values: unknown[][] };
+    const row = body.values[0]!;
+    expect(row[8]).toBe("");  // clientId
+    expect(row[9]).toBe("");  // productId
+  });
 });
 
 describe("appendToSheets", () => {

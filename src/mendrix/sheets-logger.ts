@@ -48,7 +48,7 @@ function toRow(entry: SheetsLogEntry): unknown[] {
     entry.recipientType,
     entry.spoed ? "TRUE" : "FALSE",
     entry.land,
-    entry.clientId,
+    entry.clientId ?? "",
     entry.productId ?? "",
     entry.orderId,
     entry.soapResultaat,

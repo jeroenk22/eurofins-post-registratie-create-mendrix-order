@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildCustomLinkXml } from "../customlink-xml.js";
 import { entryPhotos, entryToOrder, formatColliInstructie, formatNlDatetime, nextWorkday } from "../payload-mapper.js";
 import type { EntryPayload, WebhookPayload } from "../types.js";
 
@@ -262,6 +263,84 @@ describe("spoed clientId en productId", () => {
     const order = entryToOrder({ ...base, spoed: false, recipient_type: "mestklant" }, sender);
     expect(order.clientId).toBe(3699);
     expect(order.productId).toBe(60);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// adresvelden
+// ---------------------------------------------------------------------------
+
+describe("adresvelden", () => {
+  const metAdres: EntryPayload = {
+    ...entry,
+    adres: "Dorpsstraat 1",
+    postcode: "1234 AB",
+    plaats: "Halle",
+    land: "Duitsland",
+  };
+
+  // Zoals oude app-versies (PWA-cache) een getypte naam zonder keuze uit de lijst sturen (15-9)
+  const nullEntry: EntryPayload = {
+    ...entry,
+    recipient: "MXE6 - Ton Kolmans",
+    recipient_type: null,
+    adres: null,
+    postcode: null,
+    plaats: null,
+    land: null,
+  };
+  const nullSender: SenderInfo = { ...sender, sender_phone: null, sender_email: null };
+
+  it("neemt gevulde adresvelden over met landcode", () => {
+    const order = entryToOrder(metAdres, sender);
+    expect(order.adres).toEqual({
+      naam: "K306 - Koen Weghorst",
+      straat: "Dorpsstraat 1",
+      postcode: "1234 AB",
+      plaats: "Halle",
+      land: "Duitsland",
+      landcode: "DE",
+    });
+  });
+
+  it("crasht niet op null-adresvelden en laat ze weg uit het adres", () => {
+    const order = entryToOrder(nullEntry, nullSender);
+    expect(order.adres).toEqual({ naam: "MXE6 - Ton Kolmans" });
+  });
+
+  it("null-adresvelden met spoed: clientId=MONSTERNEMER_NL (3351)", () => {
+    const order = entryToOrder({ ...nullEntry, spoed: true }, nullSender);
+    expect(order.clientId).toBe(3351);
+    expect(order.productId).toBe(37);
+  });
+
+  it("null-adresvelden: XML krijgt Nederland/NL als land en lege adresvelden", () => {
+    const xml = buildCustomLinkXml(entryToOrder(nullEntry, nullSender));
+    expect(xml).toContain("<Street></Street>");
+    expect(xml).toContain("<PostalCode></PostalCode>");
+    expect(xml).toContain("<Place></Place>");
+    expect(xml).toContain("<Country>Nederland</Country>");
+    expect(xml).toContain("<CountryCode>NL</CountryCode>");
+    expect(xml).not.toContain("null");
+  });
+
+  it.each([
+    ["leeg", ""],
+    ["alleen spaties", "   "],
+    ["undefined", undefined],
+  ])("land %s: laat land weg zodat de XML Nederland/NL invult", (_, land) => {
+    const order = entryToOrder({ ...metAdres, land } as EntryPayload, sender);
+    expect(order.adres.land).toBeUndefined();
+    expect(order.adres.landcode).toBeUndefined();
+    const xml = buildCustomLinkXml(order);
+    expect(xml).toContain("<Country>Nederland</Country>");
+    expect(xml).toContain("<CountryCode>NL</CountryCode>");
+  });
+
+  it("land met spaties eromheen wordt getrimd", () => {
+    const order = entryToOrder({ ...metAdres, land: " België " }, sender);
+    expect(order.adres.land).toBe("België");
+    expect(order.adres.landcode).toBe("BE");
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("../version.generated.js", () => ({ GENERATED_API_VERSION: "2026.16.159" }));
 import { processEntry } from "../order-service.js";
-import type { Config, EntryPayload, WebhookPayload } from "../types.js";
+import type { Config, EntryPayload, SheetsLogEntry, WebhookPayload } from "../types.js";
 
 const config: Config = {
   soapUrl:       "http://soap.example.com/",
@@ -188,5 +188,80 @@ describe("processEntry", () => {
 
     expect(logEntry?.appVersion).toBe("");
     expect(logEntry?.apiVersion).toBe("2026.16.159");
+  });
+
+  it("verwerkt een entry met null-velden van een oude app-versie", async () => {
+    const nullEntry: EntryPayload = {
+      ...entry,
+      recipient_type: null,
+      adres: null,
+      postcode: null,
+      plaats: null,
+      land: null,
+    };
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+
+    let logEntry: SheetsLogEntry | undefined;
+    const result = await processEntry(nullEntry, { ...sender, sender_phone: null, sender_email: null }, config, deps, "203.0.113.7", (le) => { logEntry = le; });
+
+    expect(result.succes).toBe(true);
+    expect(result.orderId).toBe("42");
+    expect(deps.doSendSoap).toHaveBeenCalledOnce();
+    expect(logEntry?.land).toBe("NL");
+    expect(logEntry?.recipientType).toBe("");
+    expect(logEntry?.clientId).toBe(3351);
+    expect(logEntry?.clientIp).toBe("203.0.113.7");
+  });
+
+  it("logt land NL als land een lege string is", async () => {
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+
+    let logEntry: SheetsLogEntry | undefined;
+    await processEntry({ ...entry, land: "" }, sender, config, deps, "", (le) => { logEntry = le; });
+
+    expect(logEntry?.land).toBe("NL");
+  });
+
+  it("geeft een foutobject terug (zonder throw) als de order-data niet kan worden opgebouwd", async () => {
+    const kapotteEntry = { ...entry, recipient: null } as unknown as EntryPayload;
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    let logEntry: SheetsLogEntry | undefined;
+    const result = await processEntry(kapotteEntry, sender, config, deps, "", (le) => { logEntry = le; });
+
+    expect(result.succes).toBe(false);
+    expect(result.fout).toMatch(/^Mapping fout: /);
+    expect(deps.doSendSoap).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
+    // De mislukte entry wordt wél gelogd, zonder clientId/productId
+    expect(logEntry?.succes).toBe(false);
+    expect(logEntry?.fout).toBe(result.fout);
+    expect(logEntry?.clientId).toBeUndefined();
+    expect(logEntry?.productId).toBeUndefined();
+    errorSpy.mockRestore();
+  });
+
+  it("logt de ontvangernaam niet naar de console", async () => {
+    const deps = {
+      doSendSoap: vi.fn().mockResolvedValue(soapResponseOk),
+      doUploadPhoto: vi.fn(),
+    };
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await processEntry(entry, sender, config, deps, "", () => {});
+
+    const gelogd = logSpy.mock.calls.flat().map(String).join("\n");
+    expect(gelogd).not.toContain("Koen Weghorst");
+    logSpy.mockRestore();
   });
 });
