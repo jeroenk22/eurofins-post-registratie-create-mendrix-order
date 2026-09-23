@@ -163,6 +163,9 @@ export function entryToOrder(
   const shelf = entry.shelf ? ` - ${entry.shelf}` : "";
   const notes = `Aangemeld via postapp${door} (${formatNlDatetime(moment)})${shelf}`;
   const ids = resolveIds(entry);
+  // Oude app-versies (PWA-cache) sturen lege adresvelden als null — die laten we weg.
+  // Zonder land vult de Custom Link XML zelf Nederland/NL in.
+  const land = entry.land?.trim();
 
   return {
     clientId: ids.clientId,
@@ -174,12 +177,12 @@ export function entryToOrder(
     taakType: 2,
     adres: {
       naam: entry.recipient.replace(/\s*\([^)]*\)\s*$/, "").trim(),
-      ...(entry.adres !== undefined && { straat: entry.adres }),
-      ...(entry.postcode !== undefined && { postcode: entry.postcode }),
-      ...(entry.plaats !== undefined && { plaats: entry.plaats }),
-      ...(entry.land !== undefined && {
-        land: entry.land,
-        landcode: landToCode(entry.land),
+      ...(entry.adres != null && { straat: entry.adres }),
+      ...(entry.postcode != null && { postcode: entry.postcode }),
+      ...(entry.plaats != null && { plaats: entry.plaats }),
+      ...(land && {
+        land,
+        landcode: landToCode(land),
       }),
     },
     moment: toAmsterdamIso(),

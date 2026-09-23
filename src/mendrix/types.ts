@@ -62,11 +62,11 @@ export interface EntryPayload {
   entry_number: number;
   shelf?: string;
   recipient: string;
-  recipient_type?: RecipientType;
-  adres?: string;
-  postcode?: string;
-  plaats?: string;
-  land?: string;
+  recipient_type?: RecipientType | null;
+  adres?: string | null;
+  postcode?: string | null;
+  plaats?: string | null;
+  land?: string | null;
   colli: number;
   colli_omschrijvingen?: string[];
   spoed?: boolean;
@@ -79,12 +79,13 @@ export interface WebhookPayload {
   datetime_nl?: string;
   app_version?: string;
   sender_name: string;
-  sender_phone?: string;
-  sender_email?: string;
-  cc_email?: string;
+  sender_phone?: string | null;
+  sender_email?: string | null;
+  cc_email?: string | null;
   total_entries?: number;
   print_url?: string;
   entries: EntryPayload[];
+  client_ip?: string | null; // IP van de gebruiker, meegegeven door forward-webhook (valt onder de HMAC)
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +128,7 @@ export interface SheetsLogEntry {
   recipientType: string;
   spoed: boolean;
   land: string;
-  clientId: number;
+  clientId: number | undefined;
   productId: number | undefined;
   orderId: string;
   soapResultaat: string;

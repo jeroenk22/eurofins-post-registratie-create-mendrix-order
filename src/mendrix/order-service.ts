@@ -106,7 +106,7 @@ function getApiVersion(): string {
 
 function buildLogEntry(
   entry: EntryPayload,
-  orderData: OrderData,
+  orderData: OrderData | undefined,
   sender: SenderInfo,
   config: Config,
   result: OrderResultaat,
@@ -133,9 +133,9 @@ function buildLogEntry(
     ontvanger:        entry.recipient,
     recipientType:    entry.recipient_type ?? "",
     spoed:            entry.spoed ?? false,
-    land:             entry.land ?? "NL",
-    clientId:         orderData.clientId,
-    productId:        orderData.productId,
+    land:             entry.land?.trim() || "NL",
+    clientId:         orderData?.clientId,
+    productId:        orderData?.productId,
     orderId:          result.orderId ?? "",
     soapResultaat:    result.resultaat ?? "",
     soapOmschrijving: result.omschrijving ?? "",
@@ -164,10 +164,22 @@ export async function processEntry(
   const tijdstip = new Date(); // verwerkingstijdstip (niet submitted_at)
 
   console.log(`[order-service] Entry ${entry.entry_number}: spoed=${entry.spoed} (${typeof entry.spoed}), recipient_type=${entry.recipient_type}, land=${entry.land}`);
-  const orderData = entryToOrder(entry, sender);
-  console.log(`[order-service] Entry ${entry.entry_number}: order aanmaken voor "${entry.recipient}" → clientId=${orderData.clientId}, productId=${orderData.productId}, referenceYour="${orderData.referenceYour}"`);
 
-  const result = await execute(entry, orderData, config, deps);
+  // Een entry met onverwachte data mag de andere entries van de aanmelding niet meenemen
+  let orderData: OrderData | undefined;
+  let mappingFout = "";
+  try {
+    orderData = entryToOrder(entry, sender);
+    console.log(`[order-service] Entry ${entry.entry_number}: order aanmaken → clientId=${orderData.clientId}, productId=${orderData.productId}, referenceYour="${orderData.referenceYour}"`);
+  } catch (err) {
+    mappingFout = (err as Error).message;
+    console.error(`[order-service] Entry ${entry.entry_number}: order-data opbouwen mislukt:`, mappingFout);
+  }
+
+  const result: OrderResultaat = orderData
+    ? await execute(entry, orderData, config, deps)
+    : { succes: false, fout: `Mapping fout: ${mappingFout}` };
+
   const logEntry = buildLogEntry(entry, orderData, sender, config, result, tijdstip, clientIp);
 
   if (onLog) {

@@ -1,9 +1,20 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { isIP } from "net";
 import type { Handler, HandlerEvent, HandlerResponse } from "@netlify/functions";
 import { loadConfig } from "../../src/mendrix/config.js";
 import { processEntry } from "../../src/mendrix/order-service.js";
 import { appendManyToSheets } from "../../src/mendrix/sheets-logger.js";
-import type { SheetsLogEntry, WebhookPayload } from "../../src/mendrix/types.js";
+import type { OrderResultaat, SheetsLogEntry, WebhookPayload } from "../../src/mendrix/types.js";
+
+/**
+ * client_ip uit de (ondertekende) body heeft voorrang; forward-webhook zet daar het IP van de gebruiker in.
+ * Alleen een geldig IP wordt overgenomen — de waarde belandt in Sheets (USER_ENTERED), dus geen vrije tekst.
+ * Ontbreekt het, dan terugvallen op de request-headers.
+ */
+function resolveClientIp(payloadIp: unknown, headerIp: string): string {
+  const rawIp = typeof payloadIp === "string" && isIP(payloadIp.trim()) ? payloadIp.trim() : headerIp;
+  return (rawIp === "::1" || rawIp === "127.0.0.1") ? "localhost" : rawIp;
+}
 
 export function verifySignature(body: string, timestamp: string, signature: string, secret: string): boolean {
   const now = Math.floor(Date.now() / 1000);
@@ -58,15 +69,19 @@ export const handler: Handler = async (event: HandlerEvent): Promise<HandlerResp
   }
   console.log(`[create-order] ${allEntries.length} entr${allEntries.length === 1 ? "y" : "ies"} ontvangen`);
 
-  const rawIp = event.headers["x-forwarded-for"]?.split(",")[0]?.trim()
+  const headerIp = event.headers["x-forwarded-for"]?.split(",")[0]?.trim()
     ?? event.headers["client-ip"]
     ?? "";
-  const clientIp = (rawIp === "::1" || rawIp === "127.0.0.1") ? "localhost" : rawIp;
 
   const logEntries: SheetsLogEntry[] = [];
   const resultaten = await Promise.all(
     allEntries.map(({ entry, webhook }) =>
-      processEntry(entry, webhook, config, undefined, clientIp, (le) => logEntries.push(le))
+      processEntry(entry, webhook, config, undefined, resolveClientIp(webhook.client_ip, headerIp), (le) => logEntries.push(le))
+        // Vangnet: een onverwachte fout in één entry mag de andere entries niet laten mislukken
+        .catch((err): OrderResultaat => {
+          console.error(`[create-order] Entry ${entry.entry_number}: onverwachte fout:`, (err as Error).message);
+          return { succes: false, fout: `Onverwachte fout: ${(err as Error).message}` };
+        })
     )
   );
 
