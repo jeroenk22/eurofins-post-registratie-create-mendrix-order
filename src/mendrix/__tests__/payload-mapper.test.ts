@@ -459,10 +459,21 @@ describe("nextWorkday", () => {
 // ---------------------------------------------------------------------------
 
 describe("entryPhotos", () => {
-  it("extraheert base64-strings uit photos array", () => {
+  it("extraheert base64 en soort uit photos array; zonder soort is het een foto", () => {
     const fotos = entryPhotos(entry);
     expect(fotos).toHaveLength(1);
-    expect(fotos[0]).toBe("data:image/jpeg;base64,/9j/abc");
+    expect(fotos[0]).toEqual({ base64: "data:image/jpeg;base64,/9j/abc", soort: "foto" });
+  });
+
+  it("neemt screenshot over en maakt van een onbekende soort een foto", () => {
+    const fotos = entryPhotos({
+      ...entry,
+      photos: [
+        { filename: "a.png", base64: "data:image/jpeg;base64,a", soort: "screenshot" },
+        { filename: "b.jpg", base64: "data:image/jpeg;base64,b", soort: "../x" as never },
+      ],
+    });
+    expect(fotos.map((f) => f.soort)).toEqual(["screenshot", "foto"]);
   });
 
   it("geeft lege array terug bij geen foto's", () => {

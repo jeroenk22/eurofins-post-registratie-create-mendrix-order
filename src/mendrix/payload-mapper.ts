@@ -1,4 +1,4 @@
-import type { EntryPayload, Goed, OrderData, WebhookPayload } from "./types.js";
+import type { EntryPayload, Goed, OrderData, PhotoSoort, WebhookPayload } from "./types.js";
 import { CLIENT, PRODUCT } from "./ids.js";
 
 // ---------------------------------------------------------------------------
@@ -194,6 +194,7 @@ export function entryToOrder(
   };
 }
 
-export function entryPhotos(entry: EntryPayload): string[] {
-  return entry.photos.map((p) => p.base64);
+export function entryPhotos(entry: EntryPayload): Array<{ base64: string; soort: PhotoSoort }> {
+  // Alleen deze twee waarden: de soort komt in de bestandsnaam in het dossier
+  return entry.photos.map((p) => ({ base64: p.base64, soort: p.soort === "screenshot" ? "screenshot" : "foto" }));
 }

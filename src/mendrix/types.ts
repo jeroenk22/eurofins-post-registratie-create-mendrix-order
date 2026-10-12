@@ -49,11 +49,16 @@ export interface OrderData {
 // Inbound webhook payload (van Make.com / PWA)
 // ---------------------------------------------------------------------------
 
+/** Screenshots (bijv. van een bestelmail) moet de chauffeur in Mendrix Mobile niet zien. */
+export type PhotoSoort = "foto" | "screenshot";
+
 export interface PhotoPayload {
   filename: string;
   base64: string;
   recipient?: string;
   spoed?: boolean;
+  /** Ontbreekt bij oudere app-versies: dan geldt het als foto. */
+  soort?: PhotoSoort;
 }
 
 export type RecipientType = "monsternemer" | "ap06" | "mestklant";
