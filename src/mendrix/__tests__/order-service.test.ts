@@ -93,7 +93,7 @@ describe("processEntry", () => {
       ...entry,
       photos: [
         { filename: "a.jpg", base64: "data:image/jpeg;base64,/9j/abc" },
-        { filename: "b.png", base64: "data:image/png;base64,iVBO" },
+        { filename: "b.png", base64: "data:image/png;base64,iVBO", soort: "screenshot" },
       ],
     };
 
@@ -106,7 +106,12 @@ describe("processEntry", () => {
 
     expect(deps.doUploadPhoto).toHaveBeenCalledTimes(2);
     expect(deps.doUploadPhoto).toHaveBeenCalledWith(
-      config.apiUrl, config.apiToken, config.dossierDomain, "42", "foto_1.jpg",
+      config.apiUrl, config.apiToken, config.dossierDomain, "42", "postapp_foto_1.jpg",
+      expect.any(Buffer)
+    );
+    // Screenshots krijgen een eigen naam, zodat het bestandsmasker ze kan weglaten
+    expect(deps.doUploadPhoto).toHaveBeenCalledWith(
+      config.apiUrl, config.apiToken, config.dossierDomain, "42", "postapp_screenshot_2.png",
       expect.any(Buffer)
     );
     expect(result.fotos).toHaveLength(2);

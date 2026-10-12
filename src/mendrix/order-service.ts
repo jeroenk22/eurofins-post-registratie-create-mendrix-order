@@ -70,11 +70,13 @@ async function execute(
   console.log(`[order-service] Entry ${entry.entry_number}: orderId=${orderId}, ${fotos.length} foto(s) uploaden via ${config.apiUrl}`);
   const fotoResultaten: FotoResultaat[] = await Promise.all(
     fotos.map(async (foto, i): Promise<FotoResultaat> => {
-      const base64Data = foto.replace(/^data:[^;]+;base64,/, "");
+      const base64Data = foto.base64.replace(/^data:[^;]+;base64,/, "");
       const buffer     = Buffer.from(base64Data, "base64");
-      const extMatch   = foto.match(/^data:image\/(\w+);base64,/);
+      const extMatch   = foto.base64.match(/^data:image\/(\w+);base64,/);
       const ext        = extMatch?.[1]?.replace("jpeg", "jpg") ?? "jpg";
-      const filename   = `foto_${i + 1}.${ext}`;
+      // Herkenbaar voorvoegsel: met een bestandsmasker als postapp_foto*.jpg krijgt de
+      // chauffeur in Mendrix Mobile alleen echte foto's te zien, geen screenshots
+      const filename   = `postapp_${foto.soort}_${i + 1}.${ext}`;
 
       try {
         await deps.doUploadPhoto(
